@@ -1,0 +1,15 @@
+h1 { 
+    color: rgb(255, 115, 0); 
+    text-align: center;
+}
+.sidebar a {
+    display: block; /* Stack links vertically */
+    margin: 10px 0; /* Space between links */
+    text-decoration: none; /* Remove underline from links */
+    color: rgb(0, 0, 0); /* Link color */
+}
+
+.sidebar a:hover {
+    text-decoration: underline; /* Underline links on hover */
+    color: rgb(255, 94, 0); /* Optional: change color on hover */
+}

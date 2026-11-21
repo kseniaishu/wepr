@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Prophet / Stan compilation artifacts
+*.stan
+*.hpp
+/tmp/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# iCloud placeholder stubs
+*.icloud
+
+# Editors
+.vscode/
+.idea/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Personal documents that are not part of this project
+13-Formulario_autoriz_de_regreso.pdf

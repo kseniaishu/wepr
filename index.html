@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Predict Weather</title>
+    <link rel="stylesheet" href="static/styles.css">
+    <style>
+        body, html {
+            margin: 0; /* Remove default margin */
+            height: 100%; /* Full height */
+            overflow: hidden; /* Prevent scrolling */
+        }
+        .video-background {
+            position: absolute; /* Position behind other content */
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            z-index: -1; /* Place behind content */
+            transform: translate(-50%, -50%); /* Center the video */
+        }
+        .sidebar {
+            width: 100px; /* Set width for the sidebar */
+            height: 100vh; /* Set height to 100% of the viewport */
+            background-color: rgb(238, 209, 64); /* Background color for the sidebar */
+            padding: 10px; /* Padding around the links */
+            position: relative; /* For z-index stacking context */
+            z-index: 1; /* Ensure sidebar is above video */
+        }
+        .sidebar a {
+            display: block; /* Stack links vertically */
+            margin: 10px 0; /* Space between links */
+            text-decoration: none; /* Remove underline from links */
+            color: rgb(0, 0, 0); /* Link color */
+        }
+        .content {
+            margin-left: 20px; /* Space between sidebar and content */
+            flex-grow: 1; /* Allow content to take remaining space */
+            display: flex; /* Use flexbox for content */
+            flex-direction: column; /* Arrange children in a column */
+            justify-content: space-between; /* Space between items */
+            position: relative; /* For z-index stacking context */
+            z-index: 1; /* Ensure content is above video */
+        }
+        .image-container {
+            display: flex; /* Arrange images in a row */
+            margin-top: auto; /* Push the image container to the bottom */
+        }
+        .bottom-image {
+            margin-right: 10px; /* Space between images */
+        }
+    </style>
+</head>
+<body>
+    <video class="video-background" autoplay muted loop>
+        <source src="your-animation.mov" type="video/quicktime"> <!-- Ensure you replace this with the correct path -->
+        Your browser does not support the video tag.
+    </video>
+    <div class="sidebar">
+        <a href="index.html">About</a>
+        <a href="weather.html">Weather</a>
+        <a href="https://aeta.io/earthquake-science-page/">Earthquakes</a>
+    </div>
+    <div class="content">
+        <h1>Welcome to Fun Weather Predictor</h1>
+        <p>Fun Weather Predictor is a tool designed to help you learn about how the temperature of blah blah.</p>
+        <img src="sun.jpeg" alt="SUN" width="300">
+        <div class="image-container">
+            <img class="bottom-image" src="flowers_bottom.jpg" alt="flowers" width="400">
+            <img class="bottom-image" src="flowers_bottom.jpg" alt="flowers" width="400">
+            <img class="bottom-image" src="flowers_bottom.jpg" alt="flowers" width="400">
+        </div>
+    </div>
+</body>
+</html>
+
