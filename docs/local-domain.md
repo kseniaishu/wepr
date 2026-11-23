@@ -42,7 +42,7 @@ ping -c1 wepr.localhost
 ## Running the server
 
 ```bash
-.venv/bin/python app.py
+.venv/bin/python run.py
 ```
 
 Then open <http://wepr.localhost:8000>.

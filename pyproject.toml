@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wepr"
+version = "0.1.0"
+description = "Temperature and precipitation estimates for Iberian cities from ERA5-Land reanalysis"
+requires-python = ">=3.11"
+license = "MIT"
+
+# Dependencies live in requirements.txt, pinned exactly, and are not duplicated here.
+# A pyproject with loose ranges plus a pinned requirements file is the usual split:
+# this block exists so `pip install -e .` can put `wepr` on the path, not to resolve
+# versions.
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# src layout: the package is importable only after `pip install -e .`, which means a
+# stale copy in the working directory can never shadow the installed one, and no module
+# needs a sys.path hack to find its siblings.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

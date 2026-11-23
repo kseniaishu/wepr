@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}wepr{% endblock %}</title>
+  <meta name="description" content="Temperature and precipitation estimates for
+        twenty Iberian cities, from models trained on the ERA5-Land reanalysis
+        archive.">
+  {# A transitional serif against a grotesque — the journal-paper pairing. Real
+     fallback stacks are in the CSS, so a clone with no network degrades to
+     Georgia and the system sans rather than to nothing. #}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650&family=Source+Serif+4:opsz,wght@8..60,400;8..60,550;8..60,600&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="{{ url_for('views.index') }}">wepr</a>
+    <span class="tagline">Iberian temperature &amp; precipitation estimates</span>
+    {# aria-current rather than a class alone: the current page has to be
+       announced, not only coloured. #}
+    <nav class="site-nav" aria-label="Sections">
+      <a href="{{ url_for('views.index') }}"
+         {% if request.endpoint == 'views.index' %}aria-current="page"{% endif %}>Cities</a>
+      <a href="{{ url_for('views.map_page') }}"
+         {% if request.endpoint == 'views.map_page' %}aria-current="page"{% endif %}>Map</a>
+      <a href="{{ url_for('views.trends_page') }}"
+         {% if request.endpoint == 'views.trends_page' %}aria-current="page"{% endif %}>Trends</a>
+    </nav>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      Data: ERA5-Land reanalysis via Open-Meteo. Reanalysis is a physical model
+      with observations assimilated into it &mdash; not direct station
+      measurement. Reanalysis precipitation is materially less reliable than its
+      temperature, especially for extremes and where the land varies steeply
+      inside a grid cell.
+    </p>
+    <p>
+      <a href="{{ url_for('api.status') }}">What is loaded</a> &middot;
+      <span class="version">v{{ version }}</span>
+    </p>
+  </footer>
+</body>
+</html>

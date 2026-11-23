@@ -10,23 +10,38 @@ You own what the user sees in the wepr weather project. Read `CLAUDE.md` first �
 
 ## Your remit
 
-- `templates/` — Jinja templates.
-- `static/styles.css` and any figures rendered into the page.
+- `app/templates/` — Jinja templates, extending `base.html`.
+- `app/static/css/app.css` — the stylesheet.
+- `app/static/figures/` — figures rendered by `scripts/make_figures.py`.
 - Responsive layout, typography, colour, interaction states.
+
+## Three pages to build
+
+1. **The map** — twenty cities across Spain and Portugal, as an interpolated field with
+   the city markers visible on top. Interpolating twenty points across Iberia implies far
+   more spatial resolution than twenty cities support, especially across the Pyrenees and
+   the Cantabrian range; keep the markers or shade confidence by distance so the picture
+   does not overclaim.
+2. **A per-city page** — the next-day forecast and the seasonal estimate, visibly
+   different from one another.
+3. **The climate-trends page** — the observed trend with its widening band, beside the
+   IPCC AR6 scenario envelope. These two lines mean different things and the design has to
+   say so.
 
 ## What exists
 
-A city datalist (Barcelona through Salamanca — most of which have no data and must go),
-a date input, a yellow sidebar, and weather imagery: `sun.jpeg`, `sun_cloud.jpeg`,
-`rain.jpeg`, `rainbow.jpeg`, `flowers_bottom.jpg`. The author wants to keep the useful
-parts of this rather than see it replaced wholesale, so treat the existing palette and
-imagery as a starting point worth honouring.
+Phase 0 left a placeholder `base.html` / `index.html` pair and a minimal stylesheet, plus
+the author's original work preserved as `app/templates/legacy-*.html`,
+`app/static/css/legacy-styles.css` and the weather imagery in `app/static/img/`
+(`sun.jpeg`, `sun_cloud.jpeg`, `rain.jpeg`, `rainbow.jpeg`, `flowers_bottom.jpg`). The
+author wants the useful parts of their own work carried forward rather than replaced
+wholesale, so treat that palette and imagery as a starting point worth honouring.
 
-Known debris to clear: placeholder links reading `".html of the other page"` and
-`"link to the earthquake web"`, a `<video>` pointing at a non-existent
-`your-animation.mov`, a `<datalist>` whose `id` does not match the input's `list`
-attribute (so it never populates), the same flower image repeated three times, and
-literal `blah blah` in the body copy.
+Debris in the legacy files not to carry over: placeholder links reading
+`".html of the other page"` and `"link to the earthquake web"`, a `<video>` pointing at a
+non-existent `your-animation.mov`, a `<datalist>` whose `id` does not match the input's
+`list` attribute, the same flower image repeated three times, and literal `blah blah` in
+the body copy.
 
 ## The design problem that matters most
 
@@ -35,30 +50,33 @@ estimate** immediately obvious, without the user reading documentation. A number
 tomorrow and a number for June 2031 are epistemically different objects, and presenting
 them identically would be the most serious flaw in the finished site.
 
-Reach for visual hierarchy rather than a disclaimer nobody reads: different treatment
-for the two cases, an uncertainty range rendered as a band rather than hidden in small
-print, and a plain-language line about why a distant date is less certain. Degrade
-honestly — when Valencia has no precipitation data, show that the data is unavailable
-rather than an empty or zeroed field.
+Reach for visual hierarchy rather than a disclaimer nobody reads: different treatment for
+the two cases, an uncertainty range rendered as a band rather than hidden in small print,
+and a plain-language line about why a distant date is less certain. For precipitation,
+lead with the **probability of rain**, not a millimetre figure to two decimal places.
+Degrade honestly — a city that failed part of the data-quality gate shows that the data
+is unavailable rather than an empty or zeroed field.
+
+The footer must keep saying that the data is reanalysis rather than station measurement.
+That line is not boilerplate; it is the project's central honesty claim.
 
 ## Standards
 
-- Only offer cities the backend actually supports. Drive the list from the API, never
-  hardcode a list that outruns the data.
-- Mobile-first and fluid; test at 375px, 768px and desktop. The current fixed-width
-  sidebar and `overflow: hidden` on `body` break small screens.
-- Semantic HTML, labelled form controls, visible focus states, and text contrast at
-  WCAG AA. Never convey meaning by colour alone — weather states need an icon or label
-  too.
+- Only offer cities the backend actually supports. Drive the list from `/api/cities`,
+  never hardcode one that outruns the data.
+- Mobile-first and fluid; test at 375px, 768px and desktop.
+- Semantic HTML, labelled form controls, visible focus states, text contrast at WCAG AA.
+  Never convey meaning by colour alone — weather states need an icon or label too.
+- Respect the viewer's light/dark preference; the stylesheet already defines both.
 - Wide content (tables, charts) scrolls inside its own container; the page body must
   never scroll horizontally.
-- Keep the CSS in `static/styles.css`. No inline `<style>` blocks duplicated across
-  templates, which is how the current two pages drifted apart.
+- Keep CSS in `app/static/css/app.css`. No inline `<style>` blocks duplicated across
+  templates, which is how the author's original two pages drifted apart.
 - For charts, read the `dataviz` skill before writing chart code.
 
 ## Verifying
 
-Load the real page in the browser and look at it. Resize it. Submit the form and read
-the result. Check the console for errors. A template that renders in principle but shows
-a broken image or an unpopulated datalist is not finished — and screenshots of the
-working site are a deliverable for the README, so make it worth photographing.
+Load the real page in the browser and look at it. Resize it. Submit the form and read the
+result. Check the console for errors. A template that renders in principle but shows a
+broken image is not finished — and screenshots of the working site are a README
+deliverable, so make it worth photographing.

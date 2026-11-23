@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}wepr &middot; map{% endblock %}
+
+{% block content %}
+<section class="map">
+  <div class="hero">
+    <p class="eyebrow">Spatial field</p>
+    <h1>Iberia, interpolated</h1>
+  </div>
+
+  <nav class="map-switch">
+    {% for name in variables %}
+      <a href="{{ url_for('views.map_page', variable=name) }}"
+         class="{{ 'current' if name == variable else '' }}">
+        {{ 'Temperature' if name == 'tavg' else 'Rain probability' }}
+      </a>
+    {% endfor %}
+  </nav>
+
+  {% if summary %}
+    <p class="lede">
+      {{ summary.label }} for
+      <strong>{{ summary.target }}</strong>, interpolated from
+      {{ summary.n_cities }} cities. This is a
+      <strong>climatological expectation</strong> &mdash; the historical norm for
+      that day of year, trend-adjusted. It is not a forecast, and it does not get
+      better or worse the closer the date is.
+    </p>
+
+    {% if summary.provisional %}
+      <p class="provisional">
+        <strong>Provisional.</strong> These estimates rest on
+        {{ summary.min_years }} years of record, below the
+        {{ summary.gate_min_years }}-year data-quality gate this project sets for
+        a stable day-of-year climatology. The archive fetch is incomplete, so the
+        numbers will move. They are shown rather than withheld because the method
+        is what the map demonstrates &mdash; but they are not publishable figures.
+      </p>
+    {% endif %}
+
+    <figure>
+      <img src="{{ url_for('static', filename='figures/' ~ summary.figure) }}"
+           alt="{{ summary.label }} over Iberia, interpolated from
+                {{ summary.n_cities }} cities">
+    </figure>
+
+    <div class="panel panel-data">
+    <p class="eyebrow">Method and limits</p>
+    <h2>What this map is, and is not</h2>
+    <dl class="map-facts">
+      <dt>Where it is solid</dt>
+      <dd>
+        {{ summary.cells_interpolated }} cells lie inside the convex hull of the
+        cities, so they sit <em>between</em> observations. The
+        {{ summary.cells_extrapolated }} translucent cells do not: every city is
+        on one side of them, which makes them extrapolation, not interpolation.
+      </dd>
+
+      <dt>How far the evidence reaches</dt>
+      <dd>
+        The furthest drawn cell is
+        <strong>{{ summary.max_distance_to_city_km }} km</strong> from any city.
+        Twenty cities cannot resolve a 9 km field, and the markers are left on
+        the map so the sparsity is visible rather than described.
+      </dd>
+
+      {% if summary.surface %}
+      <dt>How it interpolates</dt>
+      <dd>
+        Not by distance alone. A surface in elevation, latitude and longitude is
+        fitted first &mdash; it explains
+        <strong>R&sup2; = {{ summary.surface.r2 }}</strong> of the spread between
+        cities, at
+        {{ summary.surface.lapse_rate_c_per_km }} {{ summary.units }} per
+        kilometre of elevation &mdash; and only the residuals, with a standard
+        deviation of {{ summary.surface.residual_sd }} {{ summary.units }}, are
+        distance-weighted. Weighting raw values would paint the Ebro valley's
+        temperature onto the Pyrenean ridges above it.
+      </dd>
+
+      <dt>Where the physics is extrapolating</dt>
+      <dd>
+        The surface was fitted on cities between
+        {{ summary.surface.fitted_elevation_range_m[0] }} m and
+        {{ summary.surface.fitted_elevation_range_m[1] }} m. The hatched cells sit
+        above that, so the lapse rate is being applied beyond the ground it was
+        measured on.
+      </dd>
+      {% endif %}
+
+      <dt>Where nothing is drawn</dt>
+      <dd>
+        Over the sea, more than {{ summary.hull_margin_km }} km beyond the city
+        hull, and off the cities' own landmass. North Africa is excluded by that
+        last rule rather than by distance: the Strait of Gibraltar is 14 km wide,
+        so no distance threshold separates Tarifa from Tetouan.
+      </dd>
+    </dl>
+    </div>
+
+    {% if summary.missing_cities %}
+      <p class="note">
+        Drawn from {{ summary.n_cities }} cities.
+        {{ summary.missing_cities | length }} have no trained model and were left
+        out rather than filled in:
+        <code>{{ summary.missing_cities | join(', ') }}</code>.
+      </p>
+    {% endif %}
+
+    <h2>The {{ summary.n_cities }} values behind it</h2>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>City</th><th>Region</th>
+            <th class="n">{{ summary.label }}</th><th class="n">Years</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for city in summary.cities %}
+            <tr>
+              <th>
+                <a href="{{ url_for('views.city_page', slug=city.slug) }}">{{ city.name }}</a>
+              </th>
+              <td class="muted">{{ city.region }}</td>
+              <td class="n">{{ "%.1f"|format(city.value) }} {{ summary.units }}</td>
+              <td class="n muted">{{ city.n_years }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <p class="note">
+      Terrain: {{ summary.elevation_source }}.
+      Machine-readable version of everything on this page:
+      <code><a href="{{ url_for('api.map_summary', variable=variable) }}">/api/map/{{ variable }}</a></code>.
+    </p>
+  {% else %}
+    <p class="lede">
+      The map has not been generated yet, so there is nothing to show. Rather than
+      draw a placeholder field, this page returns <code>503</code>.
+    </p>
+    <p class="note">
+      Generate it with:<br>
+      <code>.venv/bin/python scripts/fetch_elevation.py</code><br>
+      <code>.venv/bin/python scripts/make_figures.py</code>
+    </p>
+  {% endif %}
+</section>
+{% endblock %}

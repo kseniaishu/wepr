@@ -32,7 +32,8 @@ hyperparameter chosen by looking at the test set?
 
 **Metric–deployment mismatch.** Does every published number describe the model the app
 actually serves? This project's original sin was reporting Ridge/RandomForest MAE while
-serving Prophet. Check `reports/metrics.json` against what `app.py` loads.
+serving Prophet. `wepr.models.registry.model_key` keys both sides identically, so
+check `reports/metrics.json` against what `app/` actually loads from `models/`.
 
 **Dead or inert code paths.** Does the feature engineering actually reach the model? The
 original `predictors` list was captured before the rolling features existed, so an
@@ -45,7 +46,23 @@ the baseline it should be compared against? Is an improvement within fold-to-fol
 being reported as real?
 
 **Silent data destruction.** Does a filter or threshold drop columns or rows without
-anyone noticing? The `null_pct < 0.05` filter deletes most of the Valencia dataset.
+anyone noticing? The legacy `null_pct < 0.05` filter deleted most of the Valencia
+station dataset; the same pattern can still appear against the validation files.
+
+**Source misrepresentation.** ERA5-Land is reanalysis, not station measurement. Flag
+anywhere the README, the UI or a docstring describes it as "observations" or "measured
+data", and anywhere its precipitation is treated as being as trustworthy as its
+temperature.
+
+**Extrapolation sold as projection.** A trend fitted to 75 years and extended forward is
+a statistical extrapolation, not a climate projection. Flag any trend line presented as
+a forecast for a future decade, any extrapolation whose uncertainty band does not widen
+with distance, and any missing citation on the IPCC scenario overlay.
+
+**Leakage guards that do not guard.** `wepr.features.assert_causal` is only as good as
+its cut points, and it cannot detect a leak sourced before every cut. Check that new
+feature builders are actually passed through it, and read the definitions yourself
+rather than trusting a green test.
 
 ## How to verify
 

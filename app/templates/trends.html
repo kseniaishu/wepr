@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+
+{% block title %}wepr &middot; climate trends{% endblock %}
+
+{% block content %}
+{# The page's argument is structural: two sections, two surfaces, never one
+   axis. `.claim-statistical` is a statement about this record; `.claim-quoted`
+   is a published result with a citation. The CSS keeps them visibly apart
+   because a reader who merges them has learnt the wrong thing. #}
+<section class="trends">
+  <div class="hero">
+    <p class="eyebrow">Climate trends</p>
+    <h1>Warming, two different ways of saying it</h1>
+  </div>
+
+  {% if summary %}
+  {% macro pct(value, lo, span) -%}
+    {{ (((value - lo) / span) * 100) | round(3) }}
+  {%- endmacro %}
+
+  {% set lo_raw = summary.cities | map(attribute='ci_low') | min %}
+  {% set hi_raw = summary.cities | map(attribute='ci_high') | max %}
+  {% set lo = [lo_raw, 0.0] | min %}
+  {% set hi = [hi_raw, 0.0] | max %}
+  {% set pad = (hi - lo) * 0.06 %}
+  {% set axis_lo = lo - pad %}
+  {% set axis_hi = hi + pad %}
+  {% set span = axis_hi - axis_lo %}
+
+  <p class="lede">
+    This page shows two things side by side and refuses to merge them. The first
+    is the warming rate <strong>measured in this record</strong>, with its
+    uncertainty, extrapolated forward and labelled as the statistical
+    extrapolation it is. The second is the <strong>published CMIP6 scenario
+    envelope</strong>, quoted with its source. Extrapolating a line fitted to a
+    reanalysis record is not climate projection; real projection uses model
+    ensembles under emissions scenarios. Knowing the difference is the point.
+  </p>
+
+  {% if summary.provisional %}
+    <p class="provisional">
+      <strong>None of these slopes is a climate trend.</strong>
+      {{ summary.n_cities - summary.n_climatological }} of
+      {{ summary.n_cities }} cities are fitted to
+      {{ summary.record_years.min }}{% if summary.record_years.max != summary.record_years.min %}&ndash;{{ summary.record_years.max }}{% endif %}
+      complete years, against the {{ summary.min_trend_years }}-year WMO climate
+      normal. The archive fetch is incomplete and stops in
+      {{ summary.cities[0].last_year }}, which lands the whole window on the
+      mid-century plateau where the real trend is near zero or negative. What
+      follows is the record's own slope. Resume
+      <code>scripts/fetch_data.py</code> before quoting any of it.
+    </p>
+  {% endif %}
+
+  {# ---- claim one: measured, and extrapolated by arithmetic ---- #}
+  <div class="claim">
+    <span class="claim-kind claim-statistical">Measured here &middot; statistical</span>
+    <h2>The observed rate, city by city</h2>
+
+    <p>
+      Each dot is a Theil&ndash;Sen slope in &deg;C per decade; each bar is its
+      95% confidence interval. Theil&ndash;Sen rather than ordinary least
+      squares because a long daily record contains outlier years, and a robust
+      estimator does not let a handful of them set the slope &mdash; the OLS
+      slope is in the table below so the choice is auditable rather than
+      asserted.
+    </p>
+
+    <p class="note">
+      The line at zero is the thing to watch. An interval that touches it is an
+      interval containing <em>no warming at all</em>, which means the sign of
+      the slope is not established.
+      {% set sound = summary.cities | selectattr('is_sound') | list %}
+      {% if sound | length == 0 %}
+        On this record <strong>every one of the
+        {{ summary.n_cities }} intervals crosses zero</strong>. The flat field of
+        one colour below is the finding, not a rendering choice.
+      {% else %}
+        {{ sound | length }} of {{ summary.n_cities }} intervals clear zero and
+        are drawn in the emphatic colour.
+      {% endif %}
+    </p>
+
+    <div class="forest" role="img"
+         aria-label="Theil-Sen temperature trend and 95% confidence interval for
+                     {{ summary.n_cities }} cities; the full values are in the
+                     table below this figure.">
+      {% for city in summary.cities %}
+        <div class="forest-row {{ 'is-sound' if city.is_sound }}" tabindex="0">
+          <span class="forest-name">
+            <a href="{{ url_for('views.city_page', slug=city.slug) }}">{{ city.name }}</a>
+          </span>
+          <span class="forest-track">
+            <span class="forest-zero" style="left: {{ pct(0.0, axis_lo, span) }}%"></span>
+            <span class="forest-interval"
+                  style="left: {{ pct(city.ci_low, axis_lo, span) }}%;
+                         width: {{ ((city.ci_high - city.ci_low) / span * 100) | round(3) }}%"></span>
+            <span class="forest-dot"
+                  style="left: {{ pct(city.slope_per_decade, axis_lo, span) }}%"></span>
+          </span>
+          <span class="forest-value">
+            <b>{{ "%+.3f"|format(city.slope_per_decade) }}</b>
+            [{{ "%+.2f"|format(city.ci_low) }}, {{ "%+.2f"|format(city.ci_high) }}]
+          </span>
+          <span class="forest-tip">
+            <strong>{{ city.name }}</strong> &mdash; {{ city.region }}.
+            Theil&ndash;Sen {{ "%+.3f"|format(city.slope_per_decade) }}
+            {{ summary.units }}/decade, 95% CI
+            [{{ "%+.3f"|format(city.ci_low) }},
+             {{ "%+.3f"|format(city.ci_high) }}];
+            OLS {{ "%+.3f"|format(city.ols_slope_per_decade) }}.
+            Fitted to {{ city.n_years }} years,
+            {{ city.first_year }}&ndash;{{ city.last_year }}.
+            {% if city.ci_spans_zero %}The interval contains zero.{% endif %}
+            {% if city.ci_is_too_narrow %}
+              Residual lag-1 autocorrelation
+              {{ "%+.2f"|format(city.lag1_autocorrelation) }}, so the stated
+              interval is too narrow.
+            {% endif %}
+          </span>
+        </div>
+      {% endfor %}
+
+      <div class="forest-axis" aria-hidden="true">
+        <span></span>
+        <span class="forest-axis-track">
+          <span class="forest-tick" style="left: {{ pct(lo_raw, axis_lo, span) }}%">
+            {{ "%+.1f"|format(lo_raw) }}
+          </span>
+          <span class="forest-tick" style="left: {{ pct(0.0, axis_lo, span) }}%">0</span>
+          <span class="forest-tick" style="left: {{ pct(hi_raw, axis_lo, span) }}%">
+            {{ "%+.1f"|format(hi_raw) }}
+          </span>
+        </span>
+        <span></span>
+      </div>
+    </div>
+    <p class="muted">{{ summary.units }} per decade. Sorted by slope.</p>
+
+    <h3>Carried forward, which is arithmetic rather than physics</h3>
+    <p>
+      The same fitted line evaluated at two future years. The first interval is
+      the slope's own confidence interval swung about the end of the record, so
+      it has no width where the data ends and widens with distance. The second
+      adds 90% of the record's interannual scatter, which is the band a single
+      future year would fall in &mdash; it does not shrink to nothing, because
+      individual years scatter about a trend even when the trend is known
+      exactly.
+    </p>
+
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>City</th>
+            {% for year in summary.horizons %}
+              <th class="n {{ 'group-start' if not loop.first }}">{{ year }}</th>
+              <th>rate 95% CI</th>
+              <th>a single year</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for city in summary.cities %}
+            <tr>
+              <th>{{ city.name }}</th>
+              {% for point in city.extrapolation %}
+                <td class="n {{ 'group-start' if not loop.first }}">
+                  {{ "%.1f"|format(point.central) }}
+                </td>
+                <td class="num">
+                  {{ "%.1f"|format(point.rate_lo) }} to
+                  {{ "%.1f"|format(point.rate_hi) }}
+                </td>
+                <td class="num muted">
+                  {{ "%.1f"|format(point.year_lo) }} to
+                  {{ "%.1f"|format(point.year_hi) }}
+                </td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% set lead = summary.cities[0] %}
+    {% set furthest = lead.extrapolation | last %}
+    <p class="provisional">
+      <strong>This is arithmetic, not a projection.</strong> {{ furthest.year }}
+      is {{ furthest.years_beyond_record }} years past the end of a
+      {{ lead.n_years }}-year record, and the line gets there by assuming the
+      measured rate simply continues &mdash; no emissions pathway, no
+      feedbacks, no ocean heat uptake, none of what an ensemble actually models.
+      The widths are the honest content: at {{ furthest.year }} the rate
+      interval alone spans
+      {{ "%.1f"|format(furthest.rate_hi - furthest.rate_lo) }} {{ summary.units }}
+      for {{ lead.name }}, and a single year spans
+      {{ "%.1f"|format(furthest.year_hi - furthest.year_lo) }} {{ summary.units }}.
+      {% if not lead.is_sound %}
+        On this record the slope itself is not distinguishable from zero, so at
+        this range not even the direction is established.
+      {% endif %}
+    </p>
+  </div>
+
+  {# ---- claim two: quoted from the literature ---- #}
+  <div class="claim is-quoted">
+    <span class="claim-kind claim-quoted">Quoted &middot; published projection</span>
+    <h2>What climate science actually projects</h2>
+
+    <p>
+      These are not computed here. They are read from the published sources named
+      in the last column, each with the baseline period its anomaly is measured
+      against, because a warming figure without a baseline means nothing. The
+      <span class="scenario-med">Mediterranean rows</span> are the ones that
+      speak to Iberia; the global rows are context.
+    </p>
+
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Scenario</th>
+            <th>Region</th>
+            <th>Season</th>
+            <th>Period</th>
+            <th>Baseline</th>
+            <th class="n">&deg;C</th>
+            <th>Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in summary.scenarios %}
+            <tr>
+              <th>{{ row.scenario }}</th>
+              <td class="{{ 'scenario-med' if row.region == 'mediterranean-land' }}">
+                {{ 'Mediterranean land' if row.region == 'mediterranean-land' else 'Global' }}
+              </td>
+              <td>{{ row.season }}</td>
+              <td class="num">{{ row.period[0] }}&ndash;{{ row.period[1] }}</td>
+              <td class="num">{{ row.baseline[0] }}&ndash;{{ row.baseline[1] }}</td>
+              <td class="n">
+                {% if row.median is not none %}{{ "%.1f"|format(row.median) }}{% else %}&mdash;{% endif %}
+                <span class="muted">[{{ "%.1f"|format(row.low) }}&ndash;{{ "%.1f"|format(row.high) }}]</span>
+              </td>
+              <td class="muted">{{ row.source }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <p class="note">{{ summary.scenario_gap }}</p>
+  </div>
+
+  <div class="panel">
+  <p class="eyebrow">Baselines</p>
+  <h2>Why these two are not merged</h2>
+  <p>
+    The first reason is what they are. One is measured in this record and one is
+    quoted from a model ensemble; drawing them as a single series would hide
+    that, and the difference is the entire point of the page.
+  </p>
+  <p>
+    The second is arithmetic, and it settles the question outright for some of
+    the rows. Every scenario figure above is an anomaly against its own baseline
+    period, so putting one on the same axis as a local extrapolation means
+    expressing both against that same baseline &mdash; which requires the local
+    record to actually cover it.
+  </p>
+  <table class="facts">
+    <thead>
+      <tr><th>Scenario baseline</th><th>Cities whose record covers it</th></tr>
+    </thead>
+    <tbody>
+      {% for baseline in summary.baselines %}
+        <tr>
+          <th>{{ baseline.period[0] }}&ndash;{{ baseline.period[1] }}</th>
+          <td>
+            {% if baseline.n_covered == 0 %}
+              <strong>none of {{ summary.n_cities }}</strong>
+            {% else %}
+              {{ baseline.n_covered }} of {{ summary.n_cities }}
+              <span class="muted">{{ baseline.covered_by | join(', ') }}</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% set uncovered = summary.baselines | rejectattr('n_covered') | list %}
+  {% set covered = summary.baselines | selectattr('n_covered') | list %}
+  <p class="note">
+    {% if uncovered %}
+      No city's record reaches
+      {% for b in uncovered %}{{ b.period[0] }}&ndash;{{ b.period[1] }}{% if not loop.last %} or {% endif %}{% endfor %},
+      so those rows cannot be put on this record's axis at all. Sliding one on
+      regardless would overstate it by most of a degree, the same size as the
+      effect being discussed.
+    {% endif %}
+    {% if covered %}
+      The
+      {% for b in covered %}{{ b.period[0] }}&ndash;{{ b.period[1] }}{% if not loop.last %} and {% endif %}{% endfor %}
+      rows are a different case: the record does cover that period, so the
+      comparison is arithmetically available. They are still shown separately,
+      because being able to compute a common zero does not make a quoted
+      ensemble result and a line fitted here the same kind of claim.
+    {% endif %}
+    The per-city figures take the same decision, drawing the envelope in its own
+    panel and naming every baseline the record does and does not support.
+  </p>
+
+  </div>
+
+  <div class="panel panel-data">
+  <p class="eyebrow">Full table</p>
+  <h2>Every number behind the chart</h2>
+  <p class="note">
+    The diagnostics are here rather than in the figure because they qualify it.
+    A large gap between the robust and the least-squares slope is a finding about
+    the record; a positive residual autocorrelation means the stated interval
+    assumes more independent years than the record contains, and is therefore
+    too narrow.
+  </p>
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>City</th>
+          <th>Region</th>
+          <th class="n">Theil&ndash;Sen</th>
+          <th>95% CI</th>
+          <th class="n">OLS</th>
+          <th class="n">Residual SD</th>
+          <th class="n">Lag-1</th>
+          <th class="n">Years</th>
+          <th>Span</th>
+          <th>Climate trend?</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for city in summary.cities %}
+          <tr>
+            <th>
+              <a href="{{ url_for('views.city_page', slug=city.slug) }}">{{ city.name }}</a>
+            </th>
+            <td class="muted">{{ city.region }}</td>
+            <td class="n">{{ "%+.3f"|format(city.slope_per_decade) }}</td>
+            <td class="num">
+              [{{ "%+.3f"|format(city.ci_low) }},
+               {{ "%+.3f"|format(city.ci_high) }}]
+            </td>
+            <td class="n">{{ "%+.3f"|format(city.ols_slope_per_decade) }}</td>
+            <td class="n">{{ "%.3f"|format(city.residual_sd) }}</td>
+            <td class="n">
+              {% if city.lag1_autocorrelation is not none %}
+                {{ "%+.2f"|format(city.lag1_autocorrelation) }}{% if city.ci_is_too_narrow %}&#8224;{% endif %}
+              {% else %}&mdash;{% endif %}
+            </td>
+            <td class="n">{{ city.n_years }}</td>
+            <td class="num">{{ city.first_year }}&ndash;{{ city.last_year }}</td>
+            <td>
+              {% if city.is_climatological %}yes{% else %}
+                <strong>no</strong>
+                <span class="muted">under {{ summary.min_trend_years }} yr</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted">
+    Slopes in {{ summary.units }} per decade.
+    &#8224; marks a residual lag-1 autocorrelation above 0.2, where the stated
+    confidence interval is too narrow.
+    {% if summary.skipped %}
+      Could not be fitted at all:
+      <code>{{ summary.skipped.keys() | join(', ') }}</code>.
+    {% endif %}
+  </p>
+
+  </div>
+
+  {% if figures.values() | select | list %}
+  <h2>The fit for each city</h2>
+  <p class="note">
+    One figure per city: the annual means, the robust fit, the widening
+    extrapolation cone, and the published envelope in its own panel beside it.
+    Collapsed because twenty of them is a lot of ink &mdash; and because the
+    chart above already carries the comparison between cities, which is what
+    twenty separate panels do badly.
+  </p>
+  {% for city in summary.cities if figures[city.slug] %}
+    <details>
+      <summary>{{ city.name }} &mdash;
+        {{ "%+.3f"|format(city.slope_per_decade) }} {{ summary.units }}/decade
+      </summary>
+      <figure>
+        <img src="{{ url_for('static', filename='figures/' ~ figures[city.slug]) }}"
+             loading="lazy"
+             alt="Annual mean temperature, Theil-Sen fit and forward
+                  extrapolation for {{ city.name }}, with the published CMIP6
+                  scenario envelope in a separate panel.">
+      </figure>
+    </details>
+  {% endfor %}
+  {% endif %}
+
+  <p class="note">
+    Fitted {{ summary.generated_at }} by
+    <code>scripts/make_figures.py</code>, which writes the figures and this
+    data in one pass from one set of fits &mdash; so a number here and a line in
+    a figure cannot disagree about the same city.
+    Machine-readable:
+    <code><a href="{{ url_for('api.trend_summary') }}">/api/trends</a></code>.
+  </p>
+
+  {% else %}
+  <p class="lede">
+    The trends have not been fitted yet, so there is nothing to show. Rather
+    than draw a placeholder slope, this page returns <code>503</code>.
+  </p>
+  <p class="note">
+    Generate it with:<br>
+    <code>.venv/bin/python scripts/make_figures.py</code><br>
+    That writes <code>reports/trends.json</code>, which this page serves, and the
+    per-city figures beside it. A web request never triggers the fit.
+  </p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}wepr &middot; {{ city.name }}{% endblock %}
+
+{% block content %}
+<section class="city">
+  <div class="hero">
+    <p class="eyebrow">{{ city.region }} &middot; {{ city.country }}</p>
+    <h1>{{ city.name }}</h1>
+    {# Region and country are already in the eyebrow above; repeating them here
+       would be two labels for one fact. #}
+    <p class="muted">
+      <code>{{ "%.4f"|format(city.lat) }}, {{ "%.4f"|format(city.lon) }}</code>
+    </p>
+  </div>
+
+  {% if (forecast and forecast.provisional) or (seasonal and seasonal.provisional) %}
+    <p class="provisional">
+      <strong>Provisional.</strong> The accuracy figures on this page were measured
+      on a record that fails this project's data-quality gate &mdash; the archive
+      fetch is incomplete. They are shown rather than withheld because the method
+      is what the page demonstrates, but they are not publishable numbers.
+      <a href="{{ url_for('api.status') }}">What is loaded</a>.
+    </p>
+  {% endif %}
+
+  {% if unserveable and not (forecast and seasonal) %}
+    <p class="provisional">
+      <strong>Not fully served.</strong> {{ unserveable.message }}
+      <br><code>{{ unserveable.detail }}</code>
+    </p>
+  {% endif %}
+
+  {# ---- product one: a genuine forecast, from the archive edge ---- #}
+  {% if forecast %}
+  <div class="panel panel-data">
+  <p class="eyebrow">Product one</p>
+  <h2>Next-day forecast</h2>
+
+  <p class="lede">
+    Predicted from the observations of
+    <strong>{{ forecast.as_of }}</strong>, describing
+    <strong>{{ forecast.valid_for }}</strong>. This is a real forecast: every
+    predictor behind it was knowable before the day it describes.
+  </p>
+
+  {% if not forecast.is_near_real_time %}
+    <p class="provisional">
+      <strong>This is not today's weather.</strong> The forecast is issued one day
+      past the edge of the archive, and that edge is
+      <strong>{{ "{:,}".format(forecast.lag_days) }} days</strong> behind the
+      present. ERA5 is a reanalysis and runs a few days behind real time even when
+      fully fetched; here the fetch stops earlier still, so what you are reading is
+      a one-day-ahead prediction of
+      <strong>{{ forecast.valid_for }}</strong> made from information available on
+      {{ forecast.as_of }}. It is the same operation the model was evaluated on &mdash;
+      it is not news about the weather.
+    </p>
+  {% endif %}
+
+  <div class="readings">
+    <div class="reading">
+      <span class="reading-label">Mean temperature</span>
+      <span class="reading-value">{{ "%.1f"|format(forecast.tavg_c) }} &deg;C</span>
+      {% if forecast.tavg_accuracy %}
+        <span class="reading-note">
+          &plusmn;{{ "%.2f"|format(forecast.tavg_accuracy.mae) }} &deg;C typical error
+        </span>
+      {% endif %}
+    </div>
+
+    <div class="reading">
+      <span class="reading-label">Chance of rain</span>
+      <span class="reading-value">{{ "%.0f"|format(forecast.rain.probability * 100) }}%</span>
+      <span class="reading-note">
+        at or above {{ forecast.rain.wet_threshold_mm }} mm
+      </span>
+    </div>
+
+    <div class="reading">
+      <span class="reading-label">If it does rain</span>
+      <span class="reading-value">{{ "%.1f"|format(forecast.rain.expected_mm_if_wet) }} mm</span>
+      <span class="reading-note">expected depth <em>given</em> rain</span>
+    </div>
+  </div>
+
+  <p class="note">
+    The two rain figures are reported separately and are not multiplied together.
+    Their product is neither a probability nor a depth; the original version of
+    this project printed it as millimetres.
+  </p>
+
+  <h3>What it was predicted from</h3>
+  <table class="facts">
+    <tbody>
+      <tr>
+        <th>Observed {{ forecast.as_of }}</th>
+        <td>
+          mean {{ "%.1f"|format(forecast.observed.tavg) }} &deg;C,
+          max {{ "%.1f"|format(forecast.observed.tmax) }} &deg;C,
+          min {{ "%.1f"|format(forecast.observed.tmin) }} &deg;C,
+          rain {{ "%.1f"|format(forecast.observed.prcp) }} mm
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Against the two baselines</h3>
+  <p class="lede">
+    A model is only worth its complexity if it beats the naive answers, so both
+    are shown beside it rather than cited in a report.
+  </p>
+  <table class="facts">
+    <thead>
+      <tr><th>Method</th><th>{{ forecast.valid_for }}</th><th>Measured skill</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th>This model &mdash; ridge regression on 34 predictors</th>
+        <td><strong>{{ "%.1f"|format(forecast.tavg_c) }} &deg;C</strong></td>
+        <td class="muted">
+          {% if forecast.tavg_accuracy %}
+            MAE {{ "%.2f"|format(forecast.tavg_accuracy.mae) }} &deg;C over
+            {{ forecast.tavg_accuracy.n_folds }} walk-forward folds
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <th>Persistence &mdash; tomorrow equals today</th>
+        <td>{{ "%.1f"|format(forecast.baselines.persistence_c) }} &deg;C</td>
+        <td class="muted">
+          {% if forecast.tavg_accuracy and forecast.tavg_accuracy.skill_vs_persistence is not none %}
+            model is
+            {{ "%.0f"|format(forecast.tavg_accuracy.skill_vs_persistence * 100) }}%
+            better
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <th>Climatology &mdash; the norm for this day of year</th>
+        <td>
+          {% if forecast.baselines.climatology_c is not none %}
+            {{ "%.1f"|format(forecast.baselines.climatology_c) }} &deg;C
+          {% else %}&mdash;{% endif %}
+        </td>
+        <td class="muted">
+          {% if forecast.tavg_accuracy and forecast.tavg_accuracy.skill_vs_climatology is not none %}
+            model is
+            {{ "%.0f"|format(forecast.tavg_accuracy.skill_vs_climatology * 100) }}%
+            better
+          {% endif %}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  {% if forecast.tavg_accuracy and forecast.tavg_accuracy.beats_both_baselines is not none %}
+    <p class="note">
+      {% if forecast.tavg_accuracy.beats_both_baselines %}
+        This model beats both baselines on the held-out folds. Persistence is a
+        genuinely strong competitor at a one-day horizon, which is what makes the
+        margin small.
+      {% else %}
+        <strong>This model does not beat both baselines</strong> on the held-out
+        folds. It is reported anyway rather than quietly dropped.
+      {% endif %}
+    </p>
+  {% endif %}
+  </div>
+  {% endif %}
+
+  {# ---- product two: a climatological expectation, not a forecast ---- #}
+  {% if seasonal %}
+  <div class="panel panel-caution">
+  <p class="eyebrow">Product two</p>
+  <h2>Seasonal estimate &mdash; not a forecast</h2>
+
+  <p class="lede">
+    For a date years out there are no recent observations to condition on, so
+    there is nothing for a forecast model to use. What this gives instead is a
+    <strong>climatological expectation</strong>: the historical norm for that day
+    of year, adjusted for the record's warming trend. It describes a distribution
+    of plausible days rather than predicting one, and it does not get better or
+    worse the closer the date is.
+  </p>
+
+  <form class="date-form" method="get" action="{{ url_for('views.city_page', slug=city.slug) }}">
+    <label for="date">Date</label>
+    <input type="date" id="date" name="date" value="{{ target }}"
+           max="{{ max_year }}-12-31">
+    <button type="submit">Estimate</button>
+  </form>
+
+  {% if date_error %}
+    <p class="provisional">{{ date_error }}</p>
+  {% endif %}
+
+  {% if not seasonal.trend.is_sound %}
+    <p class="provisional">
+      <strong>Read the trend term with suspicion.</strong> The headline below is a
+      day-of-year norm plus a fitted warming trend, and on this record that second
+      part is doing more work than it can support. The slope is
+      <strong>{{ "%+.2f"|format(seasonal.trend.slope_per_decade) }} &deg;C/decade</strong>,
+      95% CI
+      [{{ "%+.2f"|format(seasonal.trend.ci_low) }},
+       {{ "%+.2f"|format(seasonal.trend.ci_high) }}]
+      {%- if seasonal.trend.ci_spans_zero %} &mdash; an interval that includes no
+      trend at all{% endif %}, fitted to
+      {{ seasonal.trend.record_years }} years and then carried
+      <strong>{{ "%.0f"|format(seasonal.trend.extrapolation_years) }} years</strong>
+      forward from {{ "%.0f"|format(seasonal.trend.anchor_year) }}. That turns a
+      small rate into a
+      <strong>{{ "%+.1f"|format(seasonal.trend.adjustment_c) }} &deg;C</strong>
+      shift. Without it the estimate is
+      <strong>{{ "%.1f"|format(seasonal.expected_without_trend_c) }} &deg;C</strong>,
+      and the backtest below says that version is the slightly better one.
+    </p>
+  {% endif %}
+
+  <div class="readings">
+    <div class="reading">
+      <span class="reading-label">
+        Expected mean, <span class="nowrap">{{ seasonal.target }}</span>
+      </span>
+      <span class="reading-value">{{ "%.1f"|format(seasonal.estimate.expected_c) }} &deg;C</span>
+      <span class="reading-note">
+        {{ "%.1f"|format(seasonal.estimate.p10_c) }} to
+        {{ "%.1f"|format(seasonal.estimate.p90_c) }} &deg;C on 8 days in 10
+      </span>
+    </div>
+
+    <div class="reading">
+      <span class="reading-label">Days with rain</span>
+      <span class="reading-value">
+        {{ "%.0f"|format(seasonal.estimate.rain_probability * 100) }}%
+      </span>
+      <span class="reading-note">historical wet-day fraction</span>
+    </div>
+
+    <div class="reading {{ 'reading-suspect' if not seasonal.trend.is_sound }}">
+      <span class="reading-label">Of which, the trend</span>
+      <span class="reading-value">
+        {{ "%+.2f"|format(seasonal.estimate.trend_adjustment_c) }} &deg;C
+      </span>
+      <span class="reading-note">
+        {%- if seasonal.trend.is_sound %}
+          carried from {{ seasonal.record[0] }}&ndash;{{ seasonal.record[1] }}
+        {%- else %}
+          {{ "%.0f"|format(seasonal.trend.extrapolation_years) }}-year extrapolation
+          of a {{ seasonal.trend.record_years }}-year slope
+        {%- endif %}
+      </span>
+    </div>
+
+    {% if not seasonal.trend.is_sound %}
+    <div class="reading">
+      <span class="reading-label">Climatology alone</span>
+      <span class="reading-value">
+        {{ "%.1f"|format(seasonal.expected_without_trend_c) }} &deg;C
+      </span>
+      <span class="reading-note">the same estimate with the trend removed</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <p class="note">
+    The interval is the 10th to 90th percentile of historical values for that day
+    of year, taken after the record's trend was removed so the warming is not
+    counted twice &mdash; once as a shift and again as spread. The estimate rests on
+    {{ seasonal.estimate.n_years }} years of record.
+    {% if seasonal.accuracy and seasonal.accuracy.coverage is not none %}
+      In the backtest that nominally-{{ "%.0f"|format(seasonal.accuracy.nominal_coverage * 100) }}%
+      interval actually contained
+      {{ "%.0f"|format(seasonal.accuracy.coverage * 100) }}% of held-out days.
+    {% endif %}
+  </p>
+
+  {% if seasonal.accuracy %}
+  <h3>What the seasonal product is measured against</h3>
+  <table class="facts">
+    <tbody>
+      <tr>
+        <th>Central error</th>
+        <td>
+          MAE {{ "%.2f"|format(seasonal.accuracy.mae) }} &deg;C over
+          {{ seasonal.accuracy.n_folds }} held-out years.
+          Larger than the next-day model's, and necessarily so: this one is never
+          told what yesterday did.
+        </td>
+      </tr>
+      {% if seasonal.accuracy.skill_vs_last_year is not none %}
+      <tr>
+        <th>Against "the same date last year"</th>
+        <td>
+          {{ "%.0f"|format(seasonal.accuracy.skill_vs_last_year * 100) }}% better.
+          That is the honest naive competitor at this horizon &mdash; persistence is
+          undefined years out.
+        </td>
+      </tr>
+      {% endif %}
+      {% if seasonal.accuracy.skill_vs_climatology is not none %}
+      <tr>
+        <th>Does the trend term earn its place?</th>
+        <td>
+          {{ "%+.1f"|format(seasonal.accuracy.skill_vs_climatology * 100) }}%
+          against this same model with the trend set to zero.
+          {% if seasonal.accuracy.skill_vs_climatology <= 0 %}
+            <strong>No</strong> &mdash; on {{ seasonal.record[1] - seasonal.record[0] + 1 }}
+            years of record the adjustment is not distinguishable from noise. It is
+            reported as such and shown separately above rather than folded in
+            silently.
+          {% endif %}
+        </td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+  {% endif %}
+  </div>
+  {% endif %}
+
+  {% if climatology_figure or trend_figure %}
+  <h2>The record behind both</h2>
+  {% if climatology_figure %}
+    <figure>
+      <img src="{{ url_for('static', filename='figures/' ~ climatology_figure) }}"
+           alt="Day-of-year climatology for {{ city.name }}">
+      <figcaption class="muted">
+        The fitted day-of-year climatology and its interval, over the whole record.
+      </figcaption>
+    </figure>
+  {% endif %}
+  {% if trend_figure %}
+    <figure>
+      <img src="{{ url_for('static', filename='figures/' ~ trend_figure) }}"
+           alt="Annual mean temperature and fitted trend for {{ city.name }}">
+      <figcaption class="muted">
+        Annual means, the Theil&ndash;Sen trend, and the published CMIP6 scenario
+        envelope beside it. The extrapolation is a statistical one and is not a
+        climate projection.
+      </figcaption>
+    </figure>
+  {% endif %}
+  {% endif %}
+
+  <p class="note">
+    Machine-readable:
+    <code><a href="{{ url_for('api.forecast', slug=city.slug) }}">/api/forecast/{{ city.slug }}</a></code>
+    and
+    <code><a href="{{ url_for('api.seasonal', slug=city.slug) }}?date={{ target }}">/api/seasonal/{{ city.slug }}</a></code>.
+  </p>
+</section>
+{% endblock %}

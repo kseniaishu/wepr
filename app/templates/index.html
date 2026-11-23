@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}wepr &middot; Iberian weather estimates{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <h1>Twenty Iberian cities, two different claims</h1>
+  <p class="lede">
+    Temperature and precipitation estimates built from the ERA5-Land reanalysis
+    archive. The site serves two products and keeps them apart, because
+    conflating them is the mistake this rebuild exists to fix.
+  </p>
+
+  <div class="products">
+    <div class="product is-measured">
+      <span class="product-kind is-forecast">Forecast</span>
+      <h3>Next day</h3>
+      <p>
+        Tomorrow predicted from today's observations, with every predictor
+        knowable before the day it describes. Reported against persistence and
+        day-of-year climatology, because a model that cannot beat both is not
+        worth its complexity.
+      </p>
+    </div>
+    <div class="product is-expectation">
+      <span class="product-kind is-not-forecast">Not a forecast</span>
+      <h3>Seasonal estimate</h3>
+      <p>
+        For an arbitrary date years out there are no recent observations to
+        condition on, so the answer is a climatological expectation &mdash; the
+        historical norm for that day of year, trend-adjusted. It comes as an
+        interval, never a bare number.
+      </p>
+    </div>
+    <div class="product is-quoted">
+      <span class="product-kind is-not-forecast">Not a projection</span>
+      <h3>Climate trends</h3>
+      <p>
+        The warming rate measured in the record with its uncertainty, beside the
+        published CMIP6 scenario envelope.
+        <a href="{{ url_for('views.trends_page') }}">The trends page</a>
+        {%- if not trends_available %} &mdash; not fitted yet, so it returns
+        <code>503</code> and says what to run{% endif %}.
+      </p>
+    </div>
+  </div>
+
+  {# The gate's verdict, in the voice the verdict deserves. Branching on the count
+     of provisional entries rather than on the presence of `note`: the note is
+     written either way, and on a complete record it reports a pass — printing a
+     pass inside the amber "distrust this" panel said the opposite of what it
+     meant. Amber is reserved for figures that are actually below the gate. #}
+  {% if status.metrics.note %}
+    {% if status.metrics.n_provisional %}
+      <p class="provisional">
+        {{ status.metrics.note }}
+        {{ status.metrics.n_provisional }} of {{ status.metrics.n_entries }}
+        measured figures on this site are below that gate and carry the caveat.
+        <a href="{{ url_for('api.status') }}">What is loaded, and what is missing</a>.
+      </p>
+    {% else %}
+      <p class="note">
+        {{ status.metrics.note }}
+        All {{ status.metrics.n_entries }} measured figures on this site are
+        above that gate, so none is marked provisional.
+        <a href="{{ url_for('api.status') }}">What is loaded, and what is missing</a>.
+      </p>
+    {% endif %}
+  {% endif %}
+
+  <p>
+    <a href="{{ url_for('views.map_page') }}">The map</a>
+    {%- if not map_available %}
+      &mdash; not generated yet, so it returns <code>503</code> and says what to run
+    {%- endif %}.
+  </p>
+</section>
+
+<section class="cities panel panel-data">
+  <p class="eyebrow">Coverage</p>
+  <h2>{{ served | length }} of {{ cities | length }} cities served</h2>
+
+  {% for region in regions %}
+    <div class="region-group">
+      <h3>{{ region }}</h3>
+      <ul class="city-list">
+        {% for city in cities if city.region == region %}
+          <li class="{{ '' if city.slug in served else 'is-unserved' }}">
+            {% if city.slug in served %}
+              <a href="{{ url_for('views.city_page', slug=city.slug) }}">{{ city.name }}</a>
+            {% else %}
+              <strong>{{ city.name }}</strong>
+              <span class="muted">no models</span>
+            {% endif %}
+            <code class="coords">{{ "%.2f"|format(city.lat) }}, {{ "%.2f"|format(city.lon) }}</code>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endfor %}
+
+  {% if served | length < cities | length %}
+    <p class="note">
+      A city with no trained model is listed but not linked. It is never filled
+      with a placeholder number.
+    </p>
+  {% endif %}
+  <p class="note">
+    <code>Altitude</code> here means <em>broken terrain</em>, not high ground: the
+    criterion is how much the land varies inside a 9 km grid cell, which is where
+    the reanalysis is weakest. Four of the <code>Interior</code> cities sit higher
+    than Huesca, but on the flat meseta.
+  </p>
+</section>
+
+{% if status.archive_edge.as_of %}
+<section class="panel">
+  <p class="eyebrow">Archive edge</p>
+  <h2>Where the forecasts are issued from</h2>
+  <p class="lede">
+    The archive's last observation is
+    <strong>{{ status.archive_edge.as_of }}</strong>, so every next-day forecast
+    describes the day after that. ERA5 is a reanalysis and runs a few days behind
+    the present even when fully fetched; this fetch stops earlier still, so the
+    forecasts are historical one-day-ahead predictions rather than news about the
+    weather. Each one says so on its own page.
+  </p>
+  <p class="note">
+    {{ status.n_models }} models loaded at startup from
+    {{ status.metrics.n_entries }} evaluated. A model with no entry in
+    <code>reports/metrics.json</code> is not served at all &mdash; the evaluated
+    model has to be the deployed model, and in the original project it was not.
+  </p>
+</section>
+{% endif %}
+{% endblock %}

@@ -5,11 +5,10 @@ __pycache__/
 venv/
 env/
 *.egg-info/
-
-# Prophet / Stan compilation artifacts
-*.stan
-*.hpp
-/tmp/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
 
 # macOS
 .DS_Store
@@ -25,6 +24,30 @@ env/
 
 # Notebook checkpoints
 .ipynb_checkpoints/
+
+# Generated artifacts. Reproduced by the scripts in scripts/, so they are not
+# committed; the .gitkeep files preserve the directory structure.
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+models/*
+!models/.gitkeep
+reports/*
+!reports/.gitkeep
+app/static/figures/*
+!app/static/figures/.gitkeep
+
+# data/grid/ holds the map's elevation artifact. The grid itself IS committed —
+# terrain is static reference data, not a refetched series, and it is tens of
+# kilobytes, so a clone can render the map with no network call. The .partial.npz
+# that `scripts/fetch_elevation.py` writes while resuming a quota-interrupted
+# fetch is scratch, and is not.
+data/grid/*.partial.npz
+
+# data/validation/ IS committed: the two original NOAA GHCN-Daily station
+# exports are the independent observational check on the ERA5-Land reanalysis,
+# and are small enough to version.
 
 # Personal documents that are not part of this project
 13-Formulario_autoriz_de_regreso.pdf
