@@ -191,7 +191,7 @@ _USABLE: dict[str, dict[str, str]] = {
         "tmax": "35% of station days missing",
         "tmin": "43% of station days missing",
         # prcp deliberately absent: 17% missing is too much to found a
-        # precipitation validation on. See CLAUDE.md.
+        # precipitation validation on. See `reports/reanalysis_validation.md`.
     },
 }
 

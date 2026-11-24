@@ -6,7 +6,7 @@ served by a Flask app from models trained on 76 years of ECMWF reanalysis.**
 ![Python](https://img.shields.io/badge/python-3.11%2B-3776ab)
 ![Flask](https://img.shields.io/badge/Flask-3.1-000000)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-1.9-f7931e)
-![Tests](https://img.shields.io/badge/tests-455-2a7f62)
+[![tests](https://github.com/kseniaishu/wepr/actions/workflows/ci.yml/badge.svg)](https://github.com/kseniaishu/wepr/actions/workflows/ci.yml)
 ![Licence](https://img.shields.io/badge/licence-MIT-blue)
 
 | | |

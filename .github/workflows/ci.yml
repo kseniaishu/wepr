@@ -1,0 +1,41 @@
+name: tests
+
+# The project's whole argument is that its numbers are verified rather than
+# remembered. A test suite nothing runs is the same kind of claim it rejects,
+# so the suite runs on every push and the badge in the README reports this
+# workflow rather than a number someone typed.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+          python -m pip install -e .
+
+      # The package lives under src/, so it is importable only once installed.
+      # Verifying that here means a broken editable install fails as itself
+      # rather than as a confusing collection error.
+      - name: Check the package imports
+        run: python -c "import wepr; print(wepr.__version__)"
+
+      # No network and no trained models: the archive client is exercised
+      # against synthetic payloads and every writable path is redirected to a
+      # tmpdir, so CI needs no secrets and no fetched data.
+      - name: Run the suite
+        run: python -m pytest -q

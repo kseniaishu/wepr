@@ -32,8 +32,9 @@ weather ever was, and widens further the longer the record gets.
 **What is not modelled, and why.** There is no per-slot trend: 76 observations of
 one calendar day cannot support 365 independent slopes, and fitting them would
 produce a sawtooth of noise across the year. There is no precipitation trend
-either — reanalysis precipitation is the project's weaker field (see CLAUDE.md),
-and a trend fitted to it would be the least defensible number on the page.
+either — reanalysis precipitation is the project's weaker field, measured against
+station records in `reports/reanalysis_validation.md` — and a trend fitted to it
+would be the least defensible number on the page.
 
 Implemented in Phase 4.
 """

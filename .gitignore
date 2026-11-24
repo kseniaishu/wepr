@@ -51,3 +51,10 @@ data/grid/*.partial.npz
 
 # Personal documents that are not part of this project
 13-Formulario_autoriz_de_regreso.pdf
+
+# Local assistant tooling. Kept on disk because it is how this project is
+# worked on, untracked because it is workflow configuration rather than part
+# of the application: CLAUDE.md is project context written for an agent, and
+# .claude/ holds agent definitions and the local dev-server config.
+CLAUDE.md
+.claude/

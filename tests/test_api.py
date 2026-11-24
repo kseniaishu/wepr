@@ -186,7 +186,7 @@ class TestCityPage:
         assert "Seasonal estimate" in html
 
     def test_states_that_the_seasonal_product_is_not_a_forecast(self, served_client):
-        """The distinction the whole rebuild exists to keep. See CLAUDE.md."""
+        """The distinction the whole rebuild exists to keep. See the README."""
         html = served_client.get("/city/madrid").get_data(as_text=True)
         assert "not a forecast" in html
         assert "climatological expectation" in html
@@ -438,7 +438,7 @@ class TestMapPage:
         assert "Madrid" in html
 
     def test_states_that_it_is_not_a_forecast(self, client, published_map):
-        """The seasonal product must never read as a forecast. See CLAUDE.md."""
+        """The seasonal product must never read as a forecast. See the README."""
         published_map("tavg")
         html = client.get("/map").get_data(as_text=True)
         assert "not a forecast" in html
@@ -637,7 +637,7 @@ class TestTrendsPage:
     def test_states_that_the_extrapolation_is_not_a_projection(
         self, client, published_trends
     ):
-        """The distinction the page exists to demonstrate. See CLAUDE.md."""
+        """The distinction the page exists to demonstrate. See the README."""
         published_trends()
         html = squashed(client.get("/trends").get_data(as_text=True))
         assert "not climate projection" in html
