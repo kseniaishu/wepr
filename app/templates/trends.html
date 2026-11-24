@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import plate %}
 
 {% block title %}wepr &middot; climate trends{% endblock %}
 
@@ -397,11 +398,10 @@
         {{ "%+.3f"|format(city.slope_per_decade) }} {{ summary.units }}/decade
       </summary>
       <figure>
-        <img src="{{ url_for('static', filename='figures/' ~ figures[city.slug]) }}"
-             loading="lazy"
-             alt="Annual mean temperature, Theil-Sen fit and forward
-                  extrapolation for {{ city.name }}, with the published CMIP6
-                  scenario envelope in a separate panel.">
+        {{ plate(url_for('static', filename='figures/' ~ figures[city.slug]),
+                 'Annual mean temperature, Theil-Sen fit and forward '
+                 ~ 'extrapolation for ' ~ city.name ~ ', with the published '
+                 ~ 'CMIP6 scenario envelope in a separate panel.', lazy=true) }}
       </figure>
     </details>
   {% endfor %}

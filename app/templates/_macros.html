@@ -1,0 +1,25 @@
+{# Shared markup fragments.
+
+   `plate` wraps a figure PNG in a link to itself. The figures are matplotlib
+   output sized for a desktop column — the map is 1,248 px wide — so on a phone
+   they render at about a quarter scale and their axis labels, city names and
+   burned-in captions are illegible. Fitting a wide scientific figure into
+   375 px and calling it done would be the easy answer and the wrong one.
+
+   Linking the image to itself is the fix that needs no JavaScript and no second
+   set of artifacts: the inline image stays an overview, and a tap opens the PNG
+   at full resolution in the browser's own image viewer, where pinch-zoom works.
+   The hint text is shown only on narrow screens, because on a desktop column the
+   figure is already legible and the hint would be noise.
+
+   Panning the figure inside a horizontally-scrolling box was the alternative. It
+   was rejected: a horizontal scroll region nested inside a vertically scrolling
+   page is a well-known touch trap, and Iberia is a landscape subject, so there
+   is no portrait re-render that would avoid the panning anyway. #}
+
+{% macro plate(src, alt, lazy=false) -%}
+  <a class="plate" href="{{ src }}" target="_blank" rel="noopener">
+    <img src="{{ src }}" alt="{{ alt }}"{% if lazy %} loading="lazy"{% endif %}>
+    <span class="plate-hint" aria-hidden="true">Tap to open full size</span>
+  </a>
+{%- endmacro %}

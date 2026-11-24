@@ -589,6 +589,15 @@ figure img {
   box-shadow: var(--shadow-panel);
 }
 
+/* A figure links to its own PNG so a reader can open it at full resolution.
+   See `_macros.html` for why that, rather than a pannable box. */
+.plate { display: block; position: relative; text-decoration: none; }
+.plate img { margin: 0; }
+
+/* Hidden on a desktop column, where the figure is already legible and this
+   would just be chrome. The narrow-screen block below reveals it. */
+.plate-hint { display: none; }
+
 figcaption {
   max-width: var(--measure);
   margin-top: 0.55rem;
@@ -876,18 +885,135 @@ details summary::marker { color: var(--muted); }
 
 /* -- narrow screens ------------------------------------------------------- */
 
+/* -- narrow screens ------------------------------------------------------- */
+
+/* Phones, and the part of this stylesheet with the most measured decisions in
+   it. Everything here was checked at 375x812 (the iPhone reference width) in
+   both colour schemes, because the gradient ground and the white figure plates
+   behave differently at the two ends of the ramp. */
+
 @media (max-width: 40rem) {
-  .site-header { padding: 0.8rem 1.1rem; }
-  main { padding: 1.75rem 1.1rem 1rem; }
+  .site-header { padding: 0.65rem 1.1rem; }
+  main { padding: 1.5rem 1.1rem 1rem; }
   .site-footer { padding: 1.25rem 1.1rem 0; margin-top: 2.5rem; }
   .tagline { display: none; }
   .panel, .claim { padding: 1.15rem 1.1rem; }
 
+  /* Headings are set for a 46rem column. At 375 px the h1 was taking four
+     lines before any content was visible, so it steps down and tightens. */
+  h1 { font-size: 1.65rem; line-height: 1.2; }
+  h2 { font-size: 1.22rem; }
+  h3 { font-size: 1rem; }
+  .lede { font-size: 1rem; }
+
+  /* 44 px is the tap target everything below is sized to. The nav sat at 33 px
+     and the city links at 18 px, which is a miss on a phone rather than a
+     stylistic preference. */
+  .site-nav { gap: 0.15rem; font-size: 0.95rem; }
+  .site-nav a { padding: 0.62rem 0.8rem; }
+
+  .map-switch { gap: 0.5rem; flex-wrap: wrap; }
+  .map-switch a { padding: 0.62rem 1rem; }
+
+  .city-list { grid-template-columns: 1fr; gap: 0.3rem; }
+  .city-list li { padding: 0; }
+  .city-list a { display: flex; align-items: center; min-height: 44px; padding: 0 0.85rem; }
+  .city-list .coords { margin-left: auto; padding-right: 0.85rem; }
+
+  /* The readings grid is auto-fit on desktop; below ~24rem the tiles get two
+     words per line and the figure wraps away from its unit. One column. */
+  .readings { grid-template-columns: 1fr; }
+  .products { grid-template-columns: 1fr; }
+
+  /* `table.facts` is a two-column key/value table with a hard minimum width,
+     and at 375 px it was the one element overflowing the page -- 371 px inside
+     a 340 px column, pushing the whole document 32 px wide. It is not tabular
+     data a reader needs aligned, so on a phone it stacks into blocks instead of
+     being made to scroll sideways. */
+  .facts,
+  .facts tbody,
+  .facts tr,
+  .facts th,
+  .facts td { display: block; width: 100%; }
+
+  .facts thead { display: none; }
+  .facts tr { padding: 0.6rem 0; border-bottom: 1px solid var(--rule); }
+  .facts tr:last-child { border-bottom: 0; }
+
+  .facts th,
+  .facts td { border: 0; padding: 0.1rem 0; }
+  .facts th { color: var(--muted); font-size: 0.8rem; font-weight: 560; }
+
+  /* Wide numeric tables keep their shape and scroll inside their own box --
+     those columns only mean anything side by side. The box is the scroller,
+     never the page. */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* The figures are desktop-width PNGs. Inline they stay fit-to-width as an
+     overview; the hint says they open full size, which is where they are
+     actually read. */
+  .plate-hint {
+    display: block;
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--link);
+    font-weight: 540;
+  }
+
+  .plate-hint::before { content: "\2197\00a0"; }
+
+  /* The forest plot kept its bars and dropped its numbers, which left a phone
+     reader with a picture and no values. The name column shrinks instead, and
+     the number moves under the track rather than off the page. */
   .forest-row,
-  .forest-axis { grid-template-columns: 5.5rem 1fr; }
-  .forest-value { display: none; }
+  .forest-axis { grid-template-columns: 4.6rem 1fr; }
+  .forest-value {
+    display: block;
+    grid-column: 2;
+    margin-top: 0.1rem;
+    font-size: 0.78rem;
+  }
   .forest-axis-track { grid-column: 2; }
   .forest-tip { left: 0; right: 0; max-width: none; }
+
+  /* Each forest row's name links to that city, so the twenty of them are a
+     navigation list, not prose -- they get a real target rather than the 17 px
+     an inline link in a dense plot gives them. */
+  .forest-name a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .brand { display: flex; align-items: center; min-height: 44px; }
+
+  /* The date picker and its button are the only real controls on the site, so
+     they get the full target and go full width rather than sitting as two small
+     pills. 16px on the input specifically: iOS Safari zooms the whole page when
+     a focused field is set smaller than that, which on this layout reads as the
+     page jumping sideways when you tap the date. */
+  .date-form { flex-wrap: wrap; gap: 0.5rem 0.75rem; }
+  .date-form label { flex-basis: 100%; }
+
+  .date-form input,
+  .date-form button {
+    min-height: 44px;
+    font-size: 16px;
+    flex: 1 1 auto;
+  }
+
+  /* Hover tooltips cannot be reached by touch; the value above replaces them. */
+  @media (hover: none) {
+    .forest-tip { display: none !important; }
+  }
+}
+
+/* Very narrow phones (320-360 px). Only the things that actually break. */
+@media (max-width: 23rem) {
+  h1 { font-size: 1.45rem; }
+  .site-nav a { padding: 0.62rem 0.6rem; }
+  .forest-row,
+  .forest-axis { grid-template-columns: 3.8rem 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

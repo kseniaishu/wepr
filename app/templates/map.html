@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import plate %}
 
 {% block title %}wepr &middot; map{% endblock %}
 
@@ -40,9 +41,9 @@
     {% endif %}
 
     <figure>
-      <img src="{{ url_for('static', filename='figures/' ~ summary.figure) }}"
-           alt="{{ summary.label }} over Iberia, interpolated from
-                {{ summary.n_cities }} cities">
+      {{ plate(url_for('static', filename='figures/' ~ summary.figure),
+               summary.label ~ ' over Iberia, interpolated from '
+               ~ summary.n_cities ~ ' cities') }}
     </figure>
 
     <div class="panel panel-data">

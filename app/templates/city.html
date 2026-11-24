@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import plate %}
 
 {% block title %}wepr &middot; {{ city.name }}{% endblock %}
 
@@ -323,8 +324,8 @@
   <h2>The record behind both</h2>
   {% if climatology_figure %}
     <figure>
-      <img src="{{ url_for('static', filename='figures/' ~ climatology_figure) }}"
-           alt="Day-of-year climatology for {{ city.name }}">
+      {{ plate(url_for('static', filename='figures/' ~ climatology_figure),
+               'Day-of-year climatology for ' ~ city.name) }}
       <figcaption class="muted">
         The fitted day-of-year climatology and its interval, over the whole record.
       </figcaption>
@@ -332,8 +333,8 @@
   {% endif %}
   {% if trend_figure %}
     <figure>
-      <img src="{{ url_for('static', filename='figures/' ~ trend_figure) }}"
-           alt="Annual mean temperature and fitted trend for {{ city.name }}">
+      {{ plate(url_for('static', filename='figures/' ~ trend_figure),
+               'Annual mean temperature and fitted trend for ' ~ city.name) }}
       <figcaption class="muted">
         Annual means, the Theil&ndash;Sen trend, and the published CMIP6 scenario
         envelope beside it. The extrapolation is a statistical one and is not a
