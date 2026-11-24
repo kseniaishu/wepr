@@ -108,6 +108,16 @@ only the residuals are distance-weighted. Interpolating raw values would paint t
 Ebro valley's temperature onto the 2,500 m Pyrenean cells above it. The design was
 chosen by cross-validation over the twenty cities, not by in-sample fit.
 
+The map is published for **all twelve months** and opens on the current one, so
+it follows the calendar instead of being pinned to whatever date the figure script
+last ran. You can pick the month; you cannot pick the year, and that is deliberate:
+across these cities the day of year moves the expected temperature by about
+**21 °C** between January and July, while the target year moves it by the fitted
+warming trend alone — roughly **+0.03 °C a year**, finer than the colour scale
+resolves. A year control would imply a precision the field does not have. If the
+artifact's date has slipped into the past the page says so and names the command
+that moves it forward.
+
 What the map shows about itself:
 
 - **solid** inside the convex hull of the cities, where a cell sits between
@@ -185,7 +195,10 @@ number cannot be shown alone.
 ```
 GET /                      the cities, and which are currently served
 GET /city/<slug>           both products, labelled as different claims
-GET /map[/<variable>]      the interpolated field and what it shows about itself
+GET /map[/<variable>[/<month>]]
+                           the interpolated field and what it shows about itself.
+                           Published for all twelve months; opens on the current
+                           one, so the page does not go stale between runs
 GET /trends                the measured warming rate beside the published envelope
 GET /api/status            what loaded, what did not, and the command that fixes it
 GET /api/forecast/<slug>   next-day forecast, with baselines and measured accuracy
@@ -245,7 +258,7 @@ data/validation/ original GHCN station exports, used to validate the reanalysis
 data/grid/       elevation grid — the map's land mask and its elevation covariate
 tests/           leakage guards, registry invariants, serving refusals, API contract
 reports/         metrics.json, the data-quality gate, and the artifacts the map
-                 and trends pages serve (map_<variable>.json, trends.json)
+                 and trends pages serve (map_<variable>_<mm>.json, trends.json)
 ```
 
 Three structural rules: nothing trains at import time, `app/` never computes a number

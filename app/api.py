@@ -89,14 +89,26 @@ def city_detail(slug: str):
 
 
 @bp.get("/map/<variable>")
-def map_summary(variable: str):
-    """What the published map of `variable` actually shows.
+@bp.get("/map/<variable>/<int:month>")
+def map_summary(variable: str, month: int | None = None):
+    """What the published map of `variable` actually shows, for one month.
 
     Carries the method, the coverage and the city values behind the figure, so a
     reader can check the map's claims rather than trusting its caption. Returns
     503 until `scripts/make_figures.py` has run, never a placeholder field.
+
+    With no month the current one is served, matching what `/map` opens on, and
+    `available_months` says which others exist.
     """
-    from app.views import MAP_VARIABLES, load_map_summary
+    from wepr import paths
+
+    from app.views import (
+        MAP_VARIABLES,
+        default_map_month,
+        load_map_summary,
+        map_is_stale,
+        published_map_months,
+    )
 
     if variable not in MAP_VARIABLES:
         return jsonify(
@@ -104,17 +116,34 @@ def map_summary(variable: str):
             available=list(MAP_VARIABLES),
         ), 404
 
-    summary = load_map_summary(variable)
+    if month is None:
+        month = default_map_month(variable)
+    elif month not in paths.MAP_MONTHS:
+        return jsonify(
+            error=f"month {month} is out of range",
+            available_months=list(paths.MAP_MONTHS),
+        ), 404
+
+    summary = load_map_summary(variable, month)
     if summary is None:
         return (
             jsonify(
-                error="map not yet generated",
+                error=f"map for month {month:02d} not yet generated",
                 detail="run scripts/make_figures.py to populate reports/ and "
                 "app/static/figures/",
+                available_months=published_map_months(variable),
             ),
             503,
         )
-    return jsonify(summary)
+    # Reported rather than hidden: the target is fixed when the figure is drawn,
+    # so a reader deserves to know when it has slipped into the past.
+    return jsonify(
+        {
+            **summary,
+            "available_months": published_map_months(variable),
+            "stale": map_is_stale(summary),
+        }
+    )
 
 
 @bp.get("/trends")

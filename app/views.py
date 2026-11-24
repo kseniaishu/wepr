@@ -39,6 +39,7 @@ rather than trusting the template to keep them.
 
 from __future__ import annotations
 
+import calendar
 import datetime as dt
 import json
 
@@ -60,13 +61,13 @@ MAP_VARIABLES = ("tavg", "prcp")
 DEFAULT_SEASONAL_HORIZON_DAYS = 365
 
 
-def load_map_summary(variable: str) -> dict | None:
-    """What the map figure shows, or None if it has not been generated.
+def load_map_summary(variable: str, month: int) -> dict | None:
+    """What one month's map figure shows, or None if it was not generated.
 
     Returns None rather than raising so a page can render an explanation. An
     untrained or un-generated app says so; it never shows a placeholder number.
     """
-    path = paths.map_summary(variable)
+    path = paths.map_summary(variable, month)
     if not path.exists():
         return None
     try:
@@ -77,6 +78,46 @@ def load_map_summary(variable: str) -> dict | None:
     # A summary without its PNG is a half-written artifact; treat it as absent
     # rather than rendering a broken image tag.
     return summary if figure.exists() else None
+
+
+def published_map_months(variable: str) -> list[int]:
+    """Which months of `variable` have actually been generated."""
+    return [m for m in paths.MAP_MONTHS if paths.map_summary(variable, m).exists()]
+
+
+def default_map_month(variable: str) -> int:
+    """The month `/map` opens on: the current one, where it was published.
+
+    **This is the fix for the map going stale, and it is deliberately not a
+    stored default.** The artifact used to be a single figure for one hard-coded
+    date — 15 July of whatever year the figure script last ran — so the page kept
+    showing that date indefinitely, and after it passed it was presenting a past
+    day as an expectation with nothing saying so. Choosing the month at *request*
+    time from what is on disk means the page follows the calendar on its own, and
+    the only thing a regeneration has to refresh is the year.
+    """
+    published = published_map_months(variable)
+    if not published:
+        return dt.date.today().month
+    today = dt.date.today().month
+    if today in published:
+        return today
+    # Nearest published month, measured around the circle so December and
+    # January are one apart rather than eleven.
+    return min(published, key=lambda m: min((m - today) % 12, (today - m) % 12))
+
+
+def map_is_stale(summary: dict) -> bool:
+    """Whether the map's target date has already passed.
+
+    The map is a climatological expectation, so a target in the past is not
+    wrong, it is just no longer the thing the reader asked for — and saying so
+    is the difference between an artifact and a stale page.
+    """
+    try:
+        return dt.date.fromisoformat(summary["target"]) < dt.date.today()
+    except (KeyError, ValueError):
+        return False
 
 
 def load_trend_summary() -> dict | None:
@@ -126,7 +167,7 @@ def index():
         version=__version__,
         served=set(store.served_slugs()),
         status=store.status(),
-        map_available=any(load_map_summary(v) is not None for v in MAP_VARIABLES),
+        map_available=any(published_map_months(v) for v in MAP_VARIABLES),
         trends_available=load_trend_summary() is not None,
     )
 
@@ -192,20 +233,36 @@ def city_page(slug: str):
 
 @bp.get("/map")
 @bp.get("/map/<variable>")
-def map_page(variable: str = "tavg"):
+@bp.get("/map/<variable>/<int:month>")
+def map_page(variable: str = "tavg", month: int | None = None):
     """The interpolated field over Iberia, with its confidence layers.
+
+    Published for all twelve months. With no month in the path the page opens on
+    the current one, so it tracks the calendar without being regenerated — see
+    `default_map_month`. The year is fixed per artifact and is not a control,
+    because the trend moves the field about +0.03 °C a year, which the colour
+    scale cannot resolve; the seasonal cycle moves it by around 21 °C.
 
     Returns 503 when the map has not been generated, with the command that
     generates it — the same contract as an untrained model endpoint.
     """
     if variable not in MAP_VARIABLES:
         abort(404)
-    summary = load_map_summary(variable)
+    if month is None:
+        month = default_map_month(variable)
+    elif month not in paths.MAP_MONTHS:
+        abort(404)
+    summary = load_map_summary(variable, month)
     return (
         render_template(
             "map.html",
             variable=variable,
             variables=MAP_VARIABLES,
+            month=month,
+            months=paths.MAP_MONTHS,
+            month_abbr=calendar.month_abbr,
+            published_months=published_map_months(variable),
+            stale=bool(summary and map_is_stale(summary)),
             summary=summary,
             version=__version__,
         ),

@@ -221,10 +221,44 @@ cannot disagree.
   will hit them. The binding one is a *location* budget, not a request count: the
   wall lands at 5,000 cached points regardless of how they are batched.
 
+### The map is published for twelve months, and opens on the current one
+
+**The map used to be one figure for one hard-coded date and it went stale in
+silence.** The default was `today().year + 1, 7, 15`, evaluated when the figure
+script ran, so the page showed 15 July of some year indefinitely — and once that
+date passed it was presenting a past day as an expectation with nothing saying so.
+
+The fix is two things, and neither is a date field:
+
+- **Twelve monthly maps per variable**, mid-month, keyed `map_<variable>_<mm>`.
+  `/map` picks the month at *request* time from what is on disk, defaulting to the
+  current one (nearest published, measured around the circle so December and
+  January are one apart). The page therefore follows the calendar on its own and
+  a regeneration only has to move the year.
+- **Staleness is reported.** `views.map_is_stale` compares the artifact's target
+  with today; the page says so in words and names the command, and `/api/map/...`
+  carries a `stale` flag and `available_months`.
+
+**Why the month is a control and the year is not.** Across these cities the day of
+year moves the expected temperature by about **21 °C** between January and July.
+The target year moves it by the fitted trend alone — about **+0.03 °C a year**,
+so even a decade of it is finer than the colour scale resolves. A year picker would
+imply a precision the field does not have; it would be theatre. The month axis
+shows the variation that is really there. A reader who wants an arbitrary date gets
+it per city on the city page, where the number is printed rather than coloured.
+
+The cost is 24 figures instead of 2, which adds about 20 s to `make_figures.py`
+(67 s total). Measured before being chosen: a live field is only 212 ms to compute
+(7 ms for twenty held seasonal models, 205 ms to interpolate 8,823 cells), so a
+request-time map is not out of reach — but the *PNG render* is 0.79 s and matplotlib
+is not safe to call per request from a Flask worker. Going live would mean drawing
+the field in the browser, which is a different project; publishing twelve months
+buys most of the benefit inside the existing artifact contract.
+
 ### The map page serves an artifact, not a live field
 
-`scripts/make_figures.py` renders `map_<variable>.png` and writes what it shows to
-`reports/map_<variable>.json`; `/map` and `/api/map/<variable>` serve both, and
+`scripts/make_figures.py` renders `map_<variable>_<mm>.png` and writes what it shows
+to `reports/map_<variable>_<mm>.json`; `/map` and `/api/map/<variable>` serve both, and
 return **503 with the commands to run** when they are absent. This is not a
 placeholder design — it is the "a web request never triggers analysis" rule. When
 Phase 6 holds the models at startup the page can go live without changing its

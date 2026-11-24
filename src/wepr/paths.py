@@ -47,14 +47,30 @@ def metrics_json() -> Path:
     return REPORTS / "metrics.json"
 
 
-def map_summary(variable: str) -> Path:
+# The map is published for every month, not for one date. The seasonal cycle is
+# the variation a reader can actually see: across these cities the day of year
+# moves the expected temperature by about 21 °C between January and July, while
+# the target *year* moves it by the fitted trend alone — about +0.03 °C a year,
+# which is below the resolution of the colour scale. So a free date field would
+# be mostly theatre, and twelve months is the honest axis. `app` defaults to the
+# current month, which is what stops the page going stale between regenerations.
+MAP_MONTHS = tuple(range(1, 13))
+
+# Mid-month, so the figure describes a representative day rather than a boundary
+# between two months.
+MAP_DAY_OF_MONTH = 15
+
+
+def map_summary(variable: str, month: int) -> Path:
     """Where `scripts/make_figures.py` records what a map figure actually shows.
 
     The figure is a PNG and cannot be interrogated, so its method, its coverage
     and the city values behind it are written beside it. The app serves this
     rather than recomputing a field per request.
+
+    Keyed by month as well as variable: see `MAP_MONTHS`.
     """
-    return REPORTS / f"map_{variable}.json"
+    return REPORTS / f"map_{variable}_{month:02d}.json"
 
 
 def trend_summary() -> Path:

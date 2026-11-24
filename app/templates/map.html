@@ -10,12 +10,30 @@
     <h1>Iberia, interpolated</h1>
   </div>
 
-  <nav class="map-switch">
+  <nav class="map-switch" aria-label="Field">
     {% for name in variables %}
-      <a href="{{ url_for('views.map_page', variable=name) }}"
+      <a href="{{ url_for('views.map_page', variable=name, month=month) }}"
          class="{{ 'current' if name == variable else '' }}">
         {{ 'Temperature' if name == 'tavg' else 'Rain probability' }}
       </a>
+    {% endfor %}
+  </nav>
+
+  {# The month axis. The map is published for all twelve, because the seasonal
+     cycle is the variation a reader can actually see — about 21 °C between
+     January and July across these cities — while the target year moves the
+     field by the fitted trend alone, roughly +0.03 °C a year. #}
+  <nav class="month-switch" aria-label="Month">
+    {% for m in months %}
+      {% if m in published_months %}
+        <a href="{{ url_for('views.map_page', variable=variable, month=m) }}"
+           class="{{ 'current' if m == month else '' }}"
+           {% if m == month %}aria-current="page"{% endif %}>
+          {{ month_abbr[m] }}
+        </a>
+      {% else %}
+        <span class="month-absent" title="not generated">{{ month_abbr[m] }}</span>
+      {% endif %}
     {% endfor %}
   </nav>
 
@@ -27,6 +45,29 @@
       <strong>climatological expectation</strong> &mdash; the historical norm for
       that day of year, trend-adjusted. It is not a forecast, and it does not get
       better or worse the closer the date is.
+    </p>
+
+    {% if stale %}
+      <p class="provisional">
+        <strong>This map's date has passed.</strong> It describes
+        {{ summary.target }}, which is now in the past. A climatological
+        expectation for a past date is not wrong &mdash; it is still the historical
+        norm for that day of year &mdash; but it is no longer the year you are
+        looking at. Re-run <code>.venv/bin/python scripts/make_figures.py</code>
+        to move the whole set forward.
+      </p>
+    {% endif %}
+
+    <p class="note">
+      <strong>Why you can pick the month but not the year.</strong> Across these
+      cities the day of year moves the expected temperature by about
+      <strong>21&nbsp;&deg;C</strong> between January and July. The target year
+      moves it by the fitted warming trend alone &mdash; roughly
+      <strong>+0.03&nbsp;&deg;C a year</strong>, so a decade of it is finer than
+      the steps on the colour scale. A year control would imply a precision the
+      field does not have; the month control shows the variation that is really
+      there. Per-city numbers for any date you like are on each
+      <a href="{{ url_for('views.index') }}">city page</a>.
     </p>
 
     {% if summary.provisional %}

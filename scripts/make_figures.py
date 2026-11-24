@@ -634,7 +634,7 @@ def figure_map(target: "dt.date", variable: str = "tavg"):
     fig.subplots_adjust(bottom=0.2)
     fig.text(0.02, 0.015, caption, fontsize=6.5, color=MUTED, va="bottom", linespacing=1.6)
 
-    written = _save(fig, f"map_{variable}.png")
+    written = _save(fig, f"map_{variable}_{target.month:02d}.png")
 
     # Beside the PNG, what the PNG cannot say for itself. The app reads this
     # instead of rebuilding a field per request, which keeps the rule that a web
@@ -645,7 +645,8 @@ def figure_map(target: "dt.date", variable: str = "tavg"):
             "variable": variable,
             "label": label,
             "target": target.isoformat(),
-            "figure": f"map_{variable}.png",
+            "figure": f"map_{variable}_{target.month:02d}.png",
+            "month": target.month,
             "generated_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
             "n_cities": int(n),
             # The map inherits the archive's provisional status. The seasonal
@@ -673,7 +674,9 @@ def figure_map(target: "dt.date", variable: str = "tavg"):
             ],
         }
     )
-    paths.map_summary(variable).write_text(json.dumps(summary, indent=2) + "\n")
+    paths.map_summary(variable, target.month).write_text(
+        json.dumps(summary, indent=2) + "\n"
+    )
     return written
 
 
@@ -751,9 +754,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--city", action="append", help="limit to this slug; repeatable")
     parser.add_argument(
-        "--map-date",
+        "--map-year",
+        type=int,
         default=None,
-        help="date the map describes, YYYY-MM-DD (default: 15 July next year)",
+        help=(
+            "year the twelve monthly maps describe (default: next year). The day "
+            "of year is not a flag: the map is published for all twelve months, "
+            "because that is the variation worth showing"
+        ),
     )
     parser.add_argument("--through-year", type=int, default=2100,
                         help="last year the trend extrapolation reaches")
@@ -813,20 +821,31 @@ def main() -> int:
     if args.city:
         print("  map: skipped, --city was given and the map needs the whole registry")
     else:
-        map_date = (
-            dt.date.fromisoformat(args.map_date)
-            if args.map_date
-            else dt.date(dt.date.today().year + 1, 7, 15)
-        )
+        # Every month, not one date. The seasonal cycle is the variation a reader
+        # can see — about 21 °C between January and July across these cities —
+        # whereas the target year moves the field by the fitted trend alone,
+        # roughly +0.03 °C a year, which is finer than the colour scale resolves.
+        # Publishing twelve months lets `/map` default to the *current* one, which
+        # is what stops the page quietly showing a date that has already passed.
+        map_year = args.map_year or dt.date.today().year + 1
+        print(f"  map: {len(paths.MAP_MONTHS)} months x 2 variables for {map_year}",
+              flush=True)
+        stop = False
         for variable in ("tavg", "prcp"):
-            try:
-                written.append(figure_map(map_date, variable))
-            except spatial.SpatialError as exc:
-                print(f"  map {variable}: skipped, {exc}".replace("\n", " "))
+            if stop:
                 break
-            except (ValueError, KeyError, FileNotFoundError) as exc:
-                print(f"  map {variable}: FAILED: {exc}", file=sys.stderr)
-                failures += 1
+            for month in paths.MAP_MONTHS:
+                target = dt.date(map_year, month, paths.MAP_DAY_OF_MONTH)
+                try:
+                    written.append(figure_map(target, variable))
+                except spatial.SpatialError as exc:
+                    print(f"  map {variable}: skipped, {exc}".replace("\n", " "))
+                    stop = True
+                    break
+                except (ValueError, KeyError, FileNotFoundError) as exc:
+                    print(f"  map {variable} {month:02d}: FAILED: {exc}",
+                          file=sys.stderr)
+                    failures += 1
 
     table = trends.trend_table(slugs)
     report = write_trend_table(table, table.attrs["variable"])

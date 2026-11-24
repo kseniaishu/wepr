@@ -238,13 +238,17 @@ def published_map(tmp_path, monkeypatch):
     monkeypatch.setattr(paths, "REPORTS", reports)
     monkeypatch.setattr(paths, "FIGURES", figures)
 
-    def _publish(variable="tavg", *, with_figure=True, **overrides):
+    def _publish(variable="tavg", month=None, *, with_figure=True, **overrides):
+        # Defaults to the current month, because that is what `/map` opens on
+        # when no month is in the path.
+        month = month or dt.date.today().month
         summary = {
             "variable": variable,
             "label": "Expected mean temperature",
             "units": "°C",
-            "target": "2027-07-15",
-            "figure": f"map_{variable}.png",
+            "target": f"{dt.date.today().year + 1}-{month:02d}-15",
+            "month": month,
+            "figure": f"map_{variable}_{month:02d}.png",
             "n_cities": 20,
             "missing_cities": [],
             "cells_drawn": 8100,
@@ -275,9 +279,9 @@ def published_map(tmp_path, monkeypatch):
             ],
         }
         summary.update(overrides)
-        (reports / f"map_{variable}.json").write_text(json.dumps(summary))
+        (reports / f"map_{variable}_{month:02d}.json").write_text(json.dumps(summary))
         if with_figure:
-            (figures / f"map_{variable}.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+            (figures / summary["figure"]).write_bytes(b"\x89PNG\r\n\x1a\n")
         return summary
 
     return _publish
@@ -329,8 +333,85 @@ class TestMapApi:
         published_map("tavg")
         from wepr import paths
 
-        paths.map_summary("tavg").write_text("{not json")
+        paths.map_summary("tavg", dt.date.today().month).write_text("{not json")
         assert client.get("/api/map/tavg").status_code == 503
+
+
+class TestMapMonths:
+    """The month axis, and the staleness guard that made it necessary.
+
+    The map used to be one figure for one hard-coded date -- 15 July of whatever
+    year the figure script last ran -- which meant the page kept presenting that
+    date indefinitely and, once it passed, presented a past day as an expectation
+    with nothing saying so. These tests pin the two halves of the fix.
+    """
+
+    def test_opens_on_the_current_month_without_being_told(self, client, published_map):
+        """The whole point: the default follows the calendar, not the artifact."""
+        published_map("tavg", dt.date.today().month)
+        body = client.get("/api/map/tavg").get_json()
+        assert body["month"] == dt.date.today().month
+
+    def test_a_month_can_be_asked_for_explicitly(self, client, published_map):
+        published_map("tavg", 1)
+        published_map("tavg", 7)
+        assert client.get("/api/map/tavg/1").get_json()["month"] == 1
+        assert client.get("/api/map/tavg/7").get_json()["month"] == 7
+
+    def test_reports_which_months_exist(self, client, published_map):
+        published_map("tavg", 3)
+        published_map("tavg", 4)
+        body = client.get("/api/map/tavg/3").get_json()
+        assert body["available_months"] == [3, 4]
+
+    def test_a_month_out_of_range_is_404_not_503(self, client, published_map):
+        """A bad request is the caller's error; 503 would blame the artifact."""
+        published_map("tavg", 1)
+        for month in (0, 13, 99):
+            assert client.get(f"/api/map/tavg/{month}").status_code == 404
+
+    def test_an_ungenerated_month_says_which_ones_exist(self, client, published_map):
+        published_map("tavg", 1)
+        response = client.get("/api/map/tavg/8")
+        assert response.status_code == 503
+        body = response.get_json()
+        assert body["available_months"] == [1]
+        assert "make_figures.py" in body["detail"]
+        assert "cities" not in body
+
+    def test_falls_back_to_the_nearest_published_month(self, client, published_map):
+        """A partial generation should still open on something sensible."""
+        far = (dt.date.today().month + 6 - 1) % 12 + 1
+        published_map("tavg", far)
+        assert client.get("/api/map/tavg").get_json()["month"] == far
+
+    def test_a_target_in_the_past_is_reported_as_stale(self, client, published_map):
+        """The silent failure the old single-date map had, now surfaced."""
+        published_map("tavg", target="2001-07-15")
+        body = client.get("/api/map/tavg").get_json()
+        assert body["stale"] is True
+        html = client.get("/map").get_data(as_text=True)
+        assert "date has passed" in html
+        assert "make_figures.py" in html
+
+    def test_a_future_target_is_not_stale(self, client, published_map):
+        published_map("tavg")
+        assert client.get("/api/map/tavg").get_json()["stale"] is False
+        assert "date has passed" not in client.get("/map").get_data(as_text=True)
+
+    def test_the_page_offers_every_published_month(self, client, published_map):
+        for month in (1, 6, 12):
+            published_map("tavg", month)
+        html = client.get("/map/tavg/6").get_data(as_text=True)
+        for month in (1, 6, 12):
+            assert f"/map/tavg/{month}" in html
+
+    def test_switching_variable_keeps_the_month(self, client, published_map):
+        """Changing the field should not silently throw away the chosen month."""
+        published_map("tavg", 2)
+        published_map("prcp", 2)
+        html = client.get("/map/tavg/2").get_data(as_text=True)
+        assert "/map/prcp/2" in html
 
 
 class TestMapPage:
@@ -345,11 +426,11 @@ class TestMapPage:
         assert "make_figures.py" in html
 
     def test_renders_the_published_map(self, client, published_map):
-        published_map("tavg")
+        published = published_map("tavg")
         response = client.get("/map")
         assert response.status_code == 200
         html = response.get_data(as_text=True)
-        assert "map_tavg.png" in html
+        assert published["figure"] in html
         assert "Madrid" in html
 
     def test_states_that_it_is_not_a_forecast(self, client, published_map):

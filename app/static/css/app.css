@@ -619,7 +619,51 @@ details summary::marker { color: var(--muted); }
 
 /* -- the map page --------------------------------------------------------- */
 
-.map-switch { display: flex; gap: 0.35rem; margin: 1.25rem 0 1.6rem; }
+.map-switch { display: flex; gap: 0.35rem; margin: 1.25rem 0 0.7rem; }
+
+/* The month axis. Twelve short chips rather than a date field, because the
+   seasonal cycle is the variation that exists -- the target year moves the
+   field by about +0.03 °C, which the colour scale cannot show. Wraps to two
+   rows on a phone rather than scrolling, so the whole year stays visible and
+   a reader can see at a glance which months exist. */
+.month-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0 0 1.6rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.month-switch a,
+.month-switch .month-absent {
+  min-width: 2.9rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  text-align: center;
+  font-size: 0.81rem;
+  text-decoration: none;
+  color: var(--muted);
+  background: var(--surface);
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.month-switch a:hover { color: var(--ink); border-color: var(--ink); }
+
+.month-switch a.current {
+  background: var(--data);
+  border-color: var(--data);
+  color: var(--surface);
+  font-weight: 600;
+}
+
+/* A month the figure script has not drawn. Shown rather than omitted so the
+   row is always twelve wide and a gap is legible as a gap. */
+.month-switch .month-absent {
+  opacity: 0.4;
+  border-style: dashed;
+  cursor: default;
+}
 
 .map-switch a {
   padding: 0.33rem 0.9rem;
@@ -914,6 +958,19 @@ details summary::marker { color: var(--muted); }
 
   .map-switch { gap: 0.5rem; flex-wrap: wrap; }
   .map-switch a { padding: 0.62rem 1rem; }
+
+  /* Four across on a phone: twelve chips at a 44 px target wrap to three tidy
+     rows, which keeps the whole year on screen without a sideways scroll. */
+  .month-switch { gap: 0.4rem; }
+  .month-switch a,
+  .month-switch .month-absent {
+    flex: 1 1 calc(25% - 0.4rem);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.86rem;
+  }
 
   .city-list { grid-template-columns: 1fr; gap: 0.3rem; }
   .city-list li { padding: 0; }
