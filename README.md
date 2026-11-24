@@ -6,7 +6,7 @@ served by a Flask app from models trained on 76 years of ECMWF reanalysis.**
 ![Python](https://img.shields.io/badge/python-3.11%2B-3776ab)
 ![Flask](https://img.shields.io/badge/Flask-3.1-000000)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-1.9-f7931e)
-![Tests](https://img.shields.io/badge/tests-450-2a7f62)
+![Tests](https://img.shields.io/badge/tests-455-2a7f62)
 ![Licence](https://img.shields.io/badge/licence-MIT-blue)
 
 | | |
@@ -397,7 +397,7 @@ cd wepr
 python3.11 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 .venv/bin/python -m pip install -e .
-.venv/bin/python -m pytest          # 450 tests, no network required
+.venv/bin/python -m pytest          # 455 tests, no network required
 .venv/bin/python run.py             # http://localhost:8000
 ```
 
@@ -441,7 +441,7 @@ interruptions to build, and it resumes from a partial file precisely because of 
 
 ## What the tests guard
 
-450 tests, no network, no trained models required. They are not coverage theatre — most
+455 tests, no network, no trained models required. They are not coverage theatre — most
 exist because something specific went wrong once:
 
 | Area | What it holds |
