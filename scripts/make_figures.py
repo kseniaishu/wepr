@@ -41,6 +41,24 @@ from wepr.models import seasonal  # noqa: E402
 
 DPI = 160
 
+# Figures the README embeds, copied into `docs/images/` so GitHub can render
+# them. `app/static/figures/` is gitignored -- the figures are generated
+# artifacts and the script reproduces them -- but GitHub cannot show an image
+# that is not in the repository, so this handful is committed.
+#
+# Copied by the script rather than by hand: a `cp` list in a README rots the
+# first time someone regenerates the figures and forgets it, and a README
+# showing a figure that no longer matches the numbers beside it is worse than a
+# README showing none. Mapping is `source stem -> committed name`.
+README_IMAGES = {
+    "map_tavg_07": "map_july",
+    "map_tavg_01": "map_january",
+    "skill": "skill",
+    "validation_huesca": "validation_huesca",
+    "trend_madrid": "trend_madrid",
+    "seasonal": "seasonal",
+}
+
 # One palette for the whole project, so a reader moving between the climatology
 # figure and the trend figure does not have to re-learn what a colour means.
 INK = "#1b1f23"
@@ -680,6 +698,29 @@ def figure_map(target: "dt.date", variable: str = "tavg"):
     return written
 
 
+def copy_readme_images() -> list:
+    """Refresh the committed copies of the figures the README embeds.
+
+    Returns the paths written. Silently skips any that this run did not produce,
+    so a `--city` run or a map that was skipped for a missing elevation grid does
+    not leave a half-updated set or crash the script.
+    """
+    import shutil
+
+    destination = paths.ROOT / "docs" / "images"
+    destination.mkdir(parents=True, exist_ok=True)
+
+    written = []
+    for stem, name in README_IMAGES.items():
+        source = paths.FIGURES / f"{stem}.png"
+        if not source.exists():
+            continue
+        target = destination / f"{name}.png"
+        shutil.copyfile(source, target)
+        written.append(target)
+    return written
+
+
 def write_trend_table(table: pd.DataFrame, variable: str):
     """Write `reports/trends.md` from the same fits the figures used."""
     lines = [
@@ -847,6 +888,8 @@ def main() -> int:
                           file=sys.stderr)
                     failures += 1
 
+    copied = copy_readme_images()
+
     table = trends.trend_table(slugs)
     report = write_trend_table(table, table.attrs["variable"])
 
@@ -860,6 +903,8 @@ def main() -> int:
     for path in written:
         print(f"  {path.relative_to(paths.ROOT)}")
     print(f"\n{len(written)} figure(s) -> {paths.FIGURES.relative_to(paths.ROOT)}")
+    if copied:
+        print(f"{len(copied)} README image(s) -> docs/images")
     print(f"trend table -> {report.relative_to(paths.ROOT)}")
     print(f"trend summary -> {summary_path.relative_to(paths.ROOT)}")
     if failures:

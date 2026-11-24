@@ -15,7 +15,7 @@ served by a Flask app from models trained on 76 years of ECMWF reanalysis.**
 | **Source** | ERA5-Land (temperature, 0.1°) + ERA5 (precipitation, 0.25°), via the Open-Meteo archive |
 | **Models** | 60 — next-day temperature, next-day rain, seasonal expectation, one set per city |
 | **Headline** | next-day temperature **MAE 0.77–1.35 °C**, beating persistence by 5.5–11.3% on 20/20 cities |
-| **Validated** | against independent NOAA GHCN station records: **r = 0.98, MAE 1.38 °C** on 12,080 paired days |
+| **Validated** | against independent NOAA GHCN station records: **r = 0.98, MAE 1.38 °C** on 12,072 paired days |
 
 This began as a UK Extended Project Qualification artefact covering two cities and a
 handful of station CSVs. It has been rebuilt as a portfolio project: twenty cities, a
