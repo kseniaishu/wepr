@@ -247,3 +247,66 @@ class TestCityEstimates:
         assert frame.empty
         assert "expected_c" in frame.columns
         assert len(frame.attrs["missing"]) == 20
+
+
+class TestMonthlyNorm:
+    """The map's value source, and the reason it is a month rather than a day.
+
+    The map used to describe one mid-month day and label it with that date. The
+    number was fine -- the 15th lands within about 0.05 °C of the month mean,
+    because a month's climatology is near-linear and the midpoint of a line is
+    its average -- but the *label* implied the rest of the month looked like it,
+    and it does not.
+    """
+
+    def test_averages_every_day_in_the_month(self, trained_project):
+        trained_project(["madrid"])
+        frame = seasonal.city_estimates_for_month(2027, 11)
+        assert frame.attrs["n_days"] == 30
+        assert frame.attrs["month"] == 11
+        assert frame.attrs["year"] == 2027
+
+        daily = [
+            seasonal.city_estimates(dt.date(2027, 11, d)).loc["madrid", "expected_c"]
+            for d in range(1, 31)
+        ]
+        assert frame.loc["madrid", "expected_c"] == pytest.approx(
+            sum(daily) / len(daily)
+        )
+
+    def test_february_length_follows_the_calendar(self, trained_project):
+        """28 or 29 days, not a hard-coded 30. 2028 is a leap year."""
+        trained_project(["madrid"])
+        assert seasonal.city_estimates_for_month(2027, 2).attrs["n_days"] == 28
+        assert seasonal.city_estimates_for_month(2028, 2).attrs["n_days"] == 29
+
+    def test_a_month_outside_the_calendar_is_rejected(self, trained_project):
+        trained_project(["madrid"])
+        for month in (0, 13, -1):
+            with pytest.raises(ValueError, match="month must be 1-12"):
+                seasonal.city_estimates_for_month(2027, month)
+
+    def test_carries_the_same_columns_as_a_single_day(self, trained_project):
+        """So the map's consumers do not need to know which one they were given."""
+        trained_project(["madrid"])
+        monthly = seasonal.city_estimates_for_month(2027, 11)
+        daily = seasonal.city_estimates(dt.date(2027, 11, 15))
+        assert set(monthly.columns) == set(daily.columns)
+        # Per-city metadata is carried through, not averaged into nonsense.
+        assert monthly.loc["madrid", "name"] == daily.loc["madrid", "name"]
+        assert monthly.loc["madrid", "n_years"] == daily.loc["madrid", "n_years"]
+
+    def test_the_mid_month_day_is_close_but_is_not_what_is_published(
+        self, trained_project
+    ):
+        """Pins the reason the change was worth making.
+
+        The 15th is a good *estimator* of the month mean, which is why the old
+        map's numbers were not wrong. It is still not the month mean, and the
+        published figure is now the real thing rather than a near-miss that
+        happens to land well.
+        """
+        trained_project(["madrid"])
+        monthly = seasonal.city_estimates_for_month(2027, 11).loc["madrid", "expected_c"]
+        mid = seasonal.city_estimates(dt.date(2027, 11, 15)).loc["madrid", "expected_c"]
+        assert monthly == pytest.approx(mid, abs=0.5)

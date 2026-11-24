@@ -108,16 +108,24 @@ def default_map_month(variable: str) -> int:
 
 
 def map_is_stale(summary: dict) -> bool:
-    """Whether the map's target date has already passed.
+    """Whether the map's target month has already passed.
 
-    The map is a climatological expectation, so a target in the past is not
-    wrong, it is just no longer the thing the reader asked for — and saying so
-    is the difference between an artifact and a stale page.
+    The map is a climatological norm, so a target in the past is not wrong — it
+    is still the historical norm for that month — but it is no longer the year
+    the reader is in, and saying so is the difference between an artifact and a
+    stale page.
+
+    Read from the `year` and `month` fields rather than parsed out of `target`:
+    `target` is now prose ("November 2027") because the figure describes a month
+    and not a day, and a page should not be deciding anything by parsing a label
+    written for a human.
     """
     try:
-        return dt.date.fromisoformat(summary["target"]) < dt.date.today()
-    except (KeyError, ValueError):
+        year, month = int(summary["year"]), int(summary["month"])
+    except (KeyError, TypeError, ValueError):
         return False
+    today = dt.date.today()
+    return (year, month) < (today.year, today.month)
 
 
 def load_trend_summary() -> dict | None:

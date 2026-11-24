@@ -4,6 +4,7 @@ The JSON shapes here are consumed by the frontend, so they are pinned. A page ca
 be redesigned freely; a response shape cannot change silently.
 """
 
+import calendar
 import datetime as dt
 
 import pytest
@@ -246,8 +247,11 @@ def published_map(tmp_path, monkeypatch):
             "variable": variable,
             "label": "Expected mean temperature",
             "units": "°C",
-            "target": f"{dt.date.today().year + 1}-{month:02d}-15",
+            "target": f"{calendar.month_name[month]} {dt.date.today().year + 1}",
             "month": month,
+            "month_name": calendar.month_name[month],
+            "year": dt.date.today().year + 1,
+            "days_averaged": calendar.monthrange(dt.date.today().year + 1, month)[1],
             "figure": f"map_{variable}_{month:02d}.png",
             "n_cities": 20,
             "missing_cities": [],
@@ -387,7 +391,7 @@ class TestMapMonths:
 
     def test_a_target_in_the_past_is_reported_as_stale(self, client, published_map):
         """The silent failure the old single-date map had, now surfaced."""
-        published_map("tavg", target="2001-07-15")
+        published_map("tavg", year=2001, target="July 2001")
         body = client.get("/api/map/tavg").get_json()
         assert body["stale"] is True
         html = client.get("/map").get_data(as_text=True)
@@ -438,7 +442,7 @@ class TestMapPage:
         published_map("tavg")
         html = client.get("/map").get_data(as_text=True)
         assert "not a forecast" in html
-        assert "climatological expectation" in html
+        assert "climatological norm" in html
 
     def test_distinguishes_interpolated_from_extrapolated_cells(
         self, client, published_map

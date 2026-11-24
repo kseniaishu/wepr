@@ -230,7 +230,16 @@ date passed it was presenting a past day as an expectation with nothing saying s
 
 The fix is two things, and neither is a date field:
 
-- **Twelve monthly maps per variable**, mid-month, keyed `map_<variable>_<mm>`.
+- **Twelve monthly maps per variable**, keyed `map_<variable>_<mm>`. Each is a
+  **monthly norm**: `seasonal.city_estimates_for_month` averages every day in the
+  month, so the figure can be labelled "November" because that is what was
+  computed. It previously described the 15th and printed that date. The numbers
+  barely moved — the 15th sits within 0.05 °C of the month mean, since a month's
+  climatology is near-linear and the midpoint of a line is its average — but the
+  *label* was the problem: the expectation falls about 4.9 °C from 1 to 30
+  November in Madrid, so naming one day implied the rest of the month looked like
+  it, worth some 2.5 °C at the edges. Fake precision in a label is still a false
+  claim even when the number behind it is right.
   `/map` picks the month at *request* time from what is on disk, defaulting to the
   current one (nearest published, measured around the circle so December and
   January are one apart). The page therefore follows the calendar on its own and

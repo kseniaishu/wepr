@@ -133,14 +133,15 @@ station records"* is a materially stronger claim than either source alone.
 
 ![Huesca: reanalysis against the station record](docs/images/validation_huesca.png)
 
-**Huesca, station `SPE00120161`, 12,080 paired days:**
+**Huesca, station `SPE00120161`.** Paired days differ per variable, because the
+station's gaps do:
 
-| Variable | Bias (ERA5 − station) | MAE | RMSE | r |
-|---|---:|---:|---:|---:|
-| `tmax` | −0.57 °C | 1.38 | 1.85 | **0.981** |
-| `tmin` | −0.67 °C | 1.66 | 2.13 | 0.955 |
-| `tavg` | −0.66 °C | 1.16 | 1.48 | **0.985** |
-| `prcp` | +1.04 mm | 1.86 | 5.01 | 0.580 |
+| Variable | Paired days | Bias (ERA5 − station) | MAE | RMSE | r |
+|---|---:|---:|---:|---:|---:|
+| `tmax` | 12,072 | −0.57 °C | 1.38 | 1.85 | **0.981** |
+| `tmin` | 12,072 | −0.67 °C | 1.66 | 2.13 | 0.955 |
+| `tavg` | 12,071 | −0.66 °C | 1.16 | 1.48 | **0.985** |
+| `prcp` | 12,080 | +1.04 mm | 1.86 | 5.01 | 0.580 |
 
 Valencia (`SPM00008284`) agrees even more closely on `tavg` — bias −0.09 °C, MAE
 0.64 °C, **r = 0.991** over 12,473 days — but 43% of its TMIN and 35% of its TMAX days
@@ -246,13 +247,20 @@ own limits rather than describe them in a caption.
 
 ![The map page](docs/images/ui-map.png)
 
+**Each map is a monthly norm, and names no single day.** Every day in the month is
+averaged, so "November" is what was computed rather than a label stuck on one date.
+That matters more than it sounds: a single mid-month day lands within ~0.05 °C of the
+month mean, so the old numbers were fine — but the expectation falls about 4.9 °C from
+1 to 30 November in Madrid, so labelling the figure `2027-11-15` invited a reader to
+take it literally and be a couple of degrees out at the month's edges.
+
 The field is published for all twelve months and the page opens on the **current** one,
 chosen at request time from what is on disk, so it follows the calendar instead of
 going stale between regenerations. There is deliberately **no year control**: across
-these cities the day of year moves expected temperature by about 21 °C between January
+these cities the month moves expected temperature by about 21 °C between January
 and July, while the target year moves it by the fitted trend alone — roughly
-+0.03 °C/year, finer than a step on the colour scale. A year field would imply a
-precision the field does not have.
++0.03 °C/year, finer than a step on the colour scale. So the month is the control and
+the year is a footnote.
 
 It does not weight raw values by distance. A linear surface in **elevation, latitude and
 longitude** is fitted first — across these cities that predicts annual mean temperature

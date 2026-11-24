@@ -19,6 +19,7 @@ Implemented in Phase 4; the trends artifact added in Phase 7.
 from __future__ import annotations
 
 import argparse
+import calendar
 import datetime as dt
 import json
 import sys
@@ -449,7 +450,7 @@ def figure_validation(slug: str = "huesca"):
 # -- the trend table ------------------------------------------------------------
 
 
-def figure_map(target: "dt.date", variable: str = "tavg"):
+def figure_map(year: int, month: int, variable: str = "tavg"):
     """The interpolated field over Iberia, with its confidence layers drawn.
 
     **Why the map is drawn in two alphas rather than one.** Inside the convex hull
@@ -476,7 +477,13 @@ def figure_map(target: "dt.date", variable: str = "tavg"):
     count the evidence.
 
     Args:
-        target: The date whose climatological expectation is mapped.
+        year: Target year, which the trend term is carried to.
+        month: Calendar month, 1-12. The map is a *monthly* norm: every day in
+            the month is averaged, so the figure can honestly be labelled
+            "November" rather than naming one day and implying the rest of the
+            month looks like it. Within November the expectation falls about
+            4.9 °C from the 1st to the 30th in Madrid, so that implication was
+            worth about 2.5 °C.
         variable: Which field — `tavg` for temperature, `prcp` for rain
             probability.
 
@@ -487,7 +494,7 @@ def figure_map(target: "dt.date", variable: str = "tavg"):
         SpatialError: If the elevation grid has not been built.
         ValueError: If no city has a trained seasonal model.
     """
-    estimates = seasonal.city_estimates(target)
+    estimates = seasonal.city_estimates_for_month(year, month)
     if estimates.empty:
         raise ValueError(
             "no city has a trained seasonal model; run scripts/train_all.py"
@@ -623,7 +630,7 @@ def figure_map(target: "dt.date", variable: str = "tavg"):
     )
     n = len(estimates)
     ax.set_title(
-        f"{label}, {target:%-d %B}\n"
+        f"{label}, {calendar.month_name[month]}\n"
         f"climatological expectation from {n} cities · not a forecast",
         fontsize=10,
         color=INK,
@@ -652,7 +659,7 @@ def figure_map(target: "dt.date", variable: str = "tavg"):
     fig.subplots_adjust(bottom=0.2)
     fig.text(0.02, 0.015, caption, fontsize=6.5, color=MUTED, va="bottom", linespacing=1.6)
 
-    written = _save(fig, f"map_{variable}_{target.month:02d}.png")
+    written = _save(fig, f"map_{variable}_{month:02d}.png")
 
     # Beside the PNG, what the PNG cannot say for itself. The app reads this
     # instead of rebuilding a field per request, which keeps the rule that a web
@@ -662,9 +669,12 @@ def figure_map(target: "dt.date", variable: str = "tavg"):
         {
             "variable": variable,
             "label": label,
-            "target": target.isoformat(),
-            "figure": f"map_{variable}_{target.month:02d}.png",
-            "month": target.month,
+            "target": f"{calendar.month_name[month]} {year}",
+            "month_name": calendar.month_name[month],
+            "year": year,
+            "days_averaged": int(estimates.attrs["n_days"]),
+            "figure": f"map_{variable}_{month:02d}.png",
+            "month": month,
             "generated_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
             "n_cities": int(n),
             # The map inherits the archive's provisional status. The seasonal
@@ -692,7 +702,7 @@ def figure_map(target: "dt.date", variable: str = "tavg"):
             ],
         }
     )
-    paths.map_summary(variable, target.month).write_text(
+    paths.map_summary(variable, month).write_text(
         json.dumps(summary, indent=2) + "\n"
     )
     return written
@@ -876,9 +886,8 @@ def main() -> int:
             if stop:
                 break
             for month in paths.MAP_MONTHS:
-                target = dt.date(map_year, month, paths.MAP_DAY_OF_MONTH)
                 try:
-                    written.append(figure_map(target, variable))
+                    written.append(figure_map(map_year, month, variable))
                 except spatial.SpatialError as exc:
                     print(f"  map {variable}: skipped, {exc}".replace("\n", " "))
                     stop = True

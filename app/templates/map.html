@@ -39,12 +39,25 @@
 
   {% if summary %}
     <p class="lede">
-      {{ summary.label }} for
-      <strong>{{ summary.target }}</strong>, interpolated from
-      {{ summary.n_cities }} cities. This is a
-      <strong>climatological expectation</strong> &mdash; the historical norm for
-      that day of year, trend-adjusted. It is not a forecast, and it does not get
-      better or worse the closer the date is.
+      {{ summary.label }} for <strong>{{ summary.month_name }}</strong>,
+      interpolated from {{ summary.n_cities }} cities. This is a
+      <strong>climatological norm</strong> &mdash; what {{ summary.month_name }}
+      has historically been like, averaged across all
+      {{ summary.days_averaged }} days of the month. It is not a forecast, and it
+      does not get better or worse the closer the date is.
+    </p>
+
+    <p class="note">
+      <strong>There is no single date here, deliberately.</strong> The map used to
+      name one &mdash; the 15th &mdash; which implied the rest of the month looked
+      like it. It does not: across {{ summary.n_cities }} cities the expectation
+      falls by several degrees from the start of a month to its end, so a reader
+      taking that date literally could be a couple of degrees out. Every day in
+      {{ summary.month_name }} is now averaged, so the figure is a monthly norm by
+      construction and can be labelled as one.
+      Trend-adjusted to <strong>{{ summary.year }}</strong>, which moves it by
+      about +0.03&nbsp;&deg;C a year &mdash; small enough that the year is a
+      footnote rather than a control.
     </p>
 
     {% if stale %}
@@ -59,14 +72,11 @@
     {% endif %}
 
     <p class="note">
-      <strong>Why you can pick the month but not the year.</strong> Across these
-      cities the day of year moves the expected temperature by about
-      <strong>21&nbsp;&deg;C</strong> between January and July. The target year
-      moves it by the fitted warming trend alone &mdash; roughly
-      <strong>+0.03&nbsp;&deg;C a year</strong>, so a decade of it is finer than
-      the steps on the colour scale. A year control would imply a precision the
-      field does not have; the month control shows the variation that is really
-      there. Per-city numbers for any date you like are on each
+      Across these cities the month moves the expected temperature by about
+      <strong>21&nbsp;&deg;C</strong> between January and July, which is why that
+      is the control. Per-city numbers for any specific date you like &mdash;
+      where a single day is the thing being asked about, and the precision is
+      honest &mdash; are on each
       <a href="{{ url_for('views.index') }}">city page</a>.
     </p>
 

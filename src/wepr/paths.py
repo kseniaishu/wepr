@@ -56,10 +56,6 @@ def metrics_json() -> Path:
 # current month, which is what stops the page going stale between regenerations.
 MAP_MONTHS = tuple(range(1, 13))
 
-# Mid-month, so the figure describes a representative day rather than a boundary
-# between two months.
-MAP_DAY_OF_MONTH = 15
-
 
 def map_summary(variable: str, month: int) -> Path:
     """Where `scripts/make_figures.py` records what a map figure actually shows.

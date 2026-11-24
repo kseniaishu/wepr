@@ -381,6 +381,80 @@ def city_estimates(target: date, slugs: Sequence[str] | None = None) -> pd.DataF
     return frame
 
 
+def city_estimates_for_month(
+    year: int, month: int, slugs: Sequence[str] | None = None
+) -> pd.DataFrame:
+    """Every city's climatological norm for a whole calendar month.
+
+    **Why the map averages a month rather than describing one day.** The map is a
+    monthly norm and should be computed as one. Taking a single mid-month day gets
+    almost exactly the same answer — across these cities the 15th sits within
+    0.05 °C of the month mean, because a month's climatology is close to linear
+    and the midpoint of a line is its average — but "almost exactly" by a
+    coincidence of the calendar is not a thing to publish. More importantly the
+    *label* on a single day is wrong: within November the expectation falls about
+    4.9 °C from the 1st to the 30th in Madrid, so a reader who takes a date label
+    literally and looks at the end of the month is some 2.5 °C out.
+
+    Averaging the days removes both problems at once: the number is a monthly norm
+    by construction, and the label can honestly say "November" because that is what
+    was computed.
+
+    The interval columns are averaged too. That makes `p10_c`/`p90_c` the mean of
+    the daily 10th and 90th percentiles across the month, which is narrower than
+    the percentiles of the pooled month — the latter would include the month's own
+    seasonal drift as if it were uncertainty about a given day. The former is the
+    right quantity for "a typical day in November"; it is not a claim about the
+    spread of the monthly mean.
+
+    Args:
+        year: Target year, which the trend term is carried to.
+        month: Calendar month, 1-12.
+        slugs: Limit to these cities; defaults to the whole registry.
+
+    Returns:
+        The same shape as `city_estimates`, averaged over the month. The frame
+        carries the slugs it could not load in ``frame.attrs["missing"]``, the
+        month in ``frame.attrs["month"]`` and the days averaged in
+        ``frame.attrs["n_days"]``.
+
+    Raises:
+        ValueError: If `month` is not in 1-12.
+    """
+    import calendar
+
+    if not 1 <= month <= 12:
+        raise ValueError(f"month must be 1-12, got {month}")
+
+    n_days = calendar.monthrange(year, month)[1]
+    daily = [city_estimates(date(year, month, d), slugs) for d in range(1, n_days + 1)]
+
+    # Every day sees the same registry, so a city missing on one day is missing on
+    # all of them; take the first frame's answer rather than reconciling twenty.
+    averaged = sum(f[_MONTH_MEAN_COLUMNS] for f in daily) / len(daily)
+    frame = daily[0].drop(columns=_MONTH_MEAN_COLUMNS).join(averaged)
+
+    frame.attrs["missing"] = daily[0].attrs["missing"]
+    frame.attrs["month"] = month
+    frame.attrs["year"] = year
+    frame.attrs["n_days"] = n_days
+    # Kept so existing consumers that print a target still have one; it names the
+    # month's midpoint, which is the representative day, not a claim about it.
+    frame.attrs["target"] = date(year, month, 15).isoformat()
+    return frame
+
+
+# Averaged across the month; everything else is per-city metadata that does not
+# vary by day and is carried through from the first day's frame.
+_MONTH_MEAN_COLUMNS = [
+    "expected_c",
+    "p10_c",
+    "p90_c",
+    "rain_probability",
+    "trend_adjustment_c",
+]
+
+
 def day_of_year_distribution(slug: str, variable: str = "tavg") -> pd.DataFrame:
     """Per-day-of-year summary statistics over the whole record.
 
