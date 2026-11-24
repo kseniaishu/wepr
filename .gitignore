@@ -49,8 +49,10 @@ data/grid/*.partial.npz
 # exports are the independent observational check on the ERA5-Land reanalysis,
 # and are small enough to version.
 
-# Personal documents that are not part of this project
-13-Formulario_autoriz_de_regreso.pdf
+# Personal documents that happen to sit in this folder and are not part of the
+# project. Matched by type rather than named: this file is public, and a
+# filename can disclose more than the file's absence does.
+*.pdf
 
 # Local assistant tooling. Kept on disk because it is how this project is
 # worked on, untracked because it is workflow configuration rather than part
