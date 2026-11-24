@@ -31,6 +31,7 @@ matplotlib.use("Agg")
 
 import matplotlib.colors  # noqa: E402
 import matplotlib.dates  # noqa: E402
+import matplotlib.patheffects as patheffects  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
@@ -578,15 +579,24 @@ def figure_map(year: int, month: int, variable: str = "tavg"):
         linewidths=0.9,
         zorder=5,
     )
+    # City labels sit directly on the painted field, so weight alone does not make
+    # them legible -- dark ink on a dark January Pyrenees cell is unreadable at any
+    # weight. Bold for the stroke width, a size up from 6.5pt, and a white halo so
+    # the name carries its own contrast wherever it lands. The halo is drawn under
+    # the glyphs, so it thickens the letterform rather than outlining it.
     for slug, row in estimates.iterrows():
         ax.annotate(
             row["name"],
             (row["lon"], row["lat"]),
             textcoords="offset points",
             xytext=(5, 4),
-            fontsize=6.5,
+            fontsize=7.5,
+            fontweight="bold",
             color=INK,
             zorder=6,
+            path_effects=[
+                patheffects.withStroke(linewidth=2.2, foreground="white")
+            ],
         )
 
     bar = fig.colorbar(
