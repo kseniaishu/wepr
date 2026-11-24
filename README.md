@@ -113,8 +113,14 @@ What the map shows about itself:
 - **solid** inside the convex hull of the cities, where a cell sits between
   observations; **translucent** outside it, where every city is on one side and the
   value is an extrapolation;
-- **hatched** where the fitted lapse rate is being applied above the highest city
-  it was fitted on — the Pyrenees and the Sierra Nevada;
+- **hatched** above the highest city the surface was fitted on (776 m) — the
+  Pyrenees and the Sierra Nevada — where the elevation term is *held at its fitted
+  ceiling* rather than carried further. The cities reach 776 m and the terrain
+  reaches 3,064 m, so that term is the one covariate asked to reach kilometres
+  beyond its data. Left unclamped it was adding +5.3 °C to the highest cells and
+  painting the Sierra Nevada as the hottest ground in Iberia in July, because
+  across these cities July temperature has zero correlation with elevation and the
+  fitted coefficient is really continentality in disguise;
 - **city markers on top**, always, so the sparsity of the evidence is visible;
 - **nothing at all** over the sea, beyond 95 km from the city hull, or off the
   cities' own landmass.

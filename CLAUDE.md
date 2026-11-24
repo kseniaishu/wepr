@@ -173,8 +173,25 @@ answer that, and all four are in `wepr.spatial`:
 - **Solid inside the city hull, translucent outside it.** Inside is
   interpolation; outside every city is on one side, which is extrapolation. They
   are different claims and are not drawn the same.
-- **Hatching where the lapse rate extrapolates terrain** — cells above the
-  highest city in the fit.
+- **The elevation term is clamped to its fitted support, and hatching marks
+  where.** The cities span 0–776 m; the grid reaches 3,064 m. Above the highest
+  city `TrendSurface.predict` holds elevation at the ceiling rather than carrying
+  the coefficient on, so those cells are surface-at-776 m plus residuals.
+  **This was found by finally drawing the map, and it matters most in July.**
+  July temperature has *zero* correlation with elevation across these twenty
+  cities (+0.00) — Iberian summer heat is continental — yet the fit still assigns
+  +2.3 °C/km, because once lat and lon take the north–south gradient the leftover
+  elevation spread tracks continentality (Atlantic cities at sea level and
+  20.2 °C, Interior at 475 m and 25.4 °C). Unclamped, that reached 3,064 m, added
+  +5.3 °C, and made the Sierra Nevada and the Pyrenees the hottest ground in
+  Iberia on a July map — the very failure the residual design exists to prevent,
+  with the sign reversed. The annual fit is fine (−3.81 °C/km) and January is
+  correctly signed (−7.72), so it is the summer map that exposes it.
+  `spatial.py` previously claimed elevation "contributes almost nothing in July,
+  but it costs nothing either". In-sample, true; out-of-sample, on exactly the
+  terrain drawn, it cost five degrees. Three tests in `tests/test_spatial.py`
+  keep the guard executable, including one that reproduces the confound on the
+  real city geometry.
 - **City markers always on top**, so a reader can count the evidence.
 
 `HULL_MARGIN_KM` is 95 km, chosen by measuring named places, and the trade is
@@ -399,9 +416,16 @@ the map with no network call at all.
 
 The spatial code is therefore no longer verified only against the synthetic terrain in
 `tests/conftest.py`: the real coastline is drawn, and the connectivity filter's
-exclusion of Morocco is **observed rather than argued**. The synthetic fixtures stay —
-they are the fast, deterministic check, and `tests/test_spatial.py` keeps both facts
-executable.
+exclusion of Morocco is **observed rather than argued** — the rendered map stops at the
+Strait with no African cells painted. The synthetic fixtures stay: they are the fast,
+deterministic check, and `tests/test_spatial.py` keeps both facts executable.
+
+Drawing it also bought the project its sharpest bug, which no test had caught because
+no test could: the elevation term was being extrapolated 2.3 km past its support and
+made the mountains the hottest ground in Iberia in July. See the map-page section
+above. The general lesson is worth keeping — the figure was the test. A covariate that
+is harmless in-sample across twenty low-lying cities is not harmless when evaluated on
+terrain none of them occupy.
 
 **The archive fetch is complete. The record is 1950-01-01 to 2026-11-15** — 28,078
 days, 76.9 years, every one of the twenty cities, 0.00% missing on every column. The

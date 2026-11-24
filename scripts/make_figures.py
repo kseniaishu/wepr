@@ -441,10 +441,17 @@ def figure_map(target: "dt.date", variable: str = "tavg"):
     translucent outside it, and nothing at all beyond `spatial.HULL_MARGIN_KM` or
     off the cities' own landmass.
 
-    Hatching marks where the fitted lapse rate is being applied above the highest
-    city in the fit. The Pyrenees and the Sierra Nevada rise far above Salamanca's
-    821 m, so the surface is extrapolating terrain there, and a reader should be
-    able to see exactly where without reading a caption.
+    Hatching marks where the terrain rises above the highest city in the fit. The
+    Pyrenees and the Sierra Nevada rise far above Salamanca, so the surface has no
+    evidence about elevation there; `TrendSurface.predict` holds the elevation term
+    at its fitted ceiling across those cells rather than carrying the coefficient
+    on, and the hatching says where that happened. A reader should be able to see
+    exactly which ground is held flat without reading a caption.
+
+    That guard is not cosmetic. Unclamped, the July surface's +2.3 °C/km — a
+    continentality artefact, since July temperature has zero correlation with
+    elevation across these cities — reached 3,064 m and made the Sierra Nevada and
+    the Pyrenees the hottest ground in Iberia. See `wepr.spatial`.
 
     The city markers stay on top at all times. Twenty points cannot resolve a 9 km
     field, and the single most honest thing the figure can do is let a reader
@@ -592,7 +599,8 @@ def figure_map(target: "dt.date", variable: str = "tavg"):
             # in °C: on the rain map it is percentage points per kilometre.
             f"surface in elevation, latitude and longitude "
             f"(R²={surface.r2:.2f}, {surface.lapse_rate_c_per_km:+.1f} {units}/km "
-            f"with elevation) plus distance-weighted residuals"
+            f"with elevation, held flat above {surface.elevation_range[1]:.0f} m) "
+            f"plus distance-weighted residuals"
         )
     )
     n = len(estimates)
@@ -612,8 +620,8 @@ def figure_map(target: "dt.date", variable: str = "tavg"):
             f"Method: {surface_note}.",
             f"Solid inside the hull of the {n} cities; translucent beyond it is "
             f"extrapolation, and nothing is drawn off their landmass.",
-            f"Hatching marks cells above the highest city in the fit ({highest:.0f} m), "
-            f"where the lapse rate is extrapolating terrain.",
+            f"Hatching marks cells above the highest city in the fit ({highest:.0f} m): "
+            f"the elevation term is held at its fitted ceiling there, not carried on.",
             "Colour limits come from the interpolated region only, so extrapolated "
             "extremes clip rather than stretching the scale.",
             f"{n} cities cannot resolve a 9 km field: the furthest drawn cell is "

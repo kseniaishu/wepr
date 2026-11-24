@@ -31,9 +31,26 @@ distance-weighting of raw values would paint the Ebro valley's temperature onto
 The surface design — elevation, latitude and longitude, no interactions — was
 chosen by leave-one-out cross-validation across the twenty cities rather than by
 in-sample fit, and it wins or ties for every field tested (annual mean, July mean,
-January mean, annual precipitation). Elevation contributes almost nothing in July,
-when Iberian heat is continental rather than elevation-controlled, but it costs
-nothing either, so one design serves every field instead of four special cases.
+January mean, annual precipitation). One design serves every field instead of four
+special cases.
+
+**Elevation is the one covariate that needs a guard, and July is why.** Its fitted
+coefficient is sound on the annual mean (-3.81 °C/km, correlation -0.65 with the
+city values) and steeper but correctly signed in January (-7.72). In July it is
+*positive*, +2.3 °C/km, against a raw correlation with elevation of exactly +0.00 —
+Iberian summer heat is continental, not elevation-controlled, so once lat and lon
+absorb the north-south gradient the leftover elevation spread tracks continentality
+instead (Atlantic cities at sea level and 20.2 °C, Interior ones at 475 m and
+25.4 °C).
+
+An earlier note here said elevation "contributes almost nothing in July, but it
+costs nothing either". The first half was right and the second was wrong, and only
+drawing the map could show it: the cities span 0-776 m while the grid reaches
+3,064 m, so that coefficient was carried 2.3 km beyond its support and added
++5.3 °C to the highest cells — painting the Sierra Nevada and the Pyrenees as the
+hottest ground in Iberia on a July map. In-sample it cost nothing; out-of-sample,
+on exactly the terrain the map draws, it cost five degrees. `TrendSurface.predict`
+therefore clips elevation to the range it was fitted on. See its docstring.
 
 **What the land mask can and cannot do.** It comes from Open-Meteo's elevation
 endpoint, which is the same digital elevation model the archive reports for the
@@ -168,9 +185,41 @@ class TrendSurface:
     def predict(
         self, elevation: np.ndarray, lats: np.ndarray, lons: np.ndarray
     ) -> np.ndarray:
-        """Evaluate the surface. Arrays must broadcast against one another."""
+        """Evaluate the surface, with elevation clipped to its fitted support.
+
+        **Elevation is clamped to `elevation_range`; latitude and longitude are
+        not.** The cities span 0-776 m but the grid reaches 3,064 m, so the
+        elevation term is the one covariate asked to reach far outside the data
+        that set it — 2.3 km past the highest city, against a few tenths of a
+        degree for lat and lon, which the hull margin bounds anyway.
+
+        Without the clamp the July map is visibly wrong, and wrong in the exact
+        way the residual design exists to prevent. Across these twenty cities
+        July temperature has **zero** correlation with elevation (+0.00): Iberian
+        summer heat is continental, not elevation-controlled. The fit still
+        assigns elevation +2.3 °C/km, because once lat and lon absorb the
+        north-south gradient the residual elevation spread aligns with
+        continentality — the Atlantic cities sit at sea level and 20.2 °C, the
+        Interior ones average 475 m and 25.4 °C. Carried to 3,064 m that
+        coefficient added +5.3 °C and painted the Sierra Nevada and the Pyrenees
+        as the hottest ground in Iberia in July.
+
+        Clamping says the honest thing instead: above the highest city the fit
+        has no evidence about elevation, so the surface stops varying with it and
+        the distance-weighted residuals carry the cell alone. `Field.
+        extrapolates_elevation` already marks exactly these cells, and the map
+        already hatches them — that hatching now means "held flat here" rather
+        than "extrapolated here", which is the stronger claim to be able to make.
+
+        Nothing inside the fitted range changes, so the annual-mean result the
+        design was chosen on (-3.81 °C/km, leave-one-out MAE 0.45 °C) is
+        untouched, and city residuals are unaffected because every city is
+        within the range by construction.
+        """
         c = self.coefficients
-        return c[0] + c[1] * elevation + c[2] * lats + c[3] * lons
+        lo, hi = self.elevation_range
+        supported = np.clip(elevation, lo, hi)
+        return c[0] + c[1] * supported + c[2] * lats + c[3] * lons
 
 
 @dataclass(frozen=True, slots=True)

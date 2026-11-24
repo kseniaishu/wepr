@@ -124,6 +124,77 @@ def test_fit_surface_records_the_elevation_range_it_was_fitted_on():
     assert surface.elevation_range == (10.0, 820.0)
 
 
+def test_predict_holds_elevation_flat_above_the_fitted_range():
+    """The guard on the one covariate asked to reach far outside its data.
+
+    The cities span 0-776 m and the grid reaches 3,064 m, so the elevation term
+    is the only one extrapolated by kilometres. Above the highest fitted city the
+    surface must stop varying with elevation instead of carrying the coefficient
+    on, because beyond that point the fit has no evidence about elevation at all.
+    """
+    surface = spatial.fit_surface(
+        [0.0, 200.0, 400.0, 600.0, 800.0, 100.0],
+        [36.0, 38.0, 40.0, 42.0, 43.0, 37.0],
+        [-9.0, -6.0, -3.0, 0.0, 2.0, -8.0],
+        [20.0, 19.0, 18.0, 17.0, 16.0, 19.5],
+    )
+    lat, lon = 40.0, -3.0
+
+    at_ceiling = surface.predict(np.array([800.0]), lat, lon)
+    far_above = surface.predict(np.array([3000.0]), lat, lon)
+    assert far_above == pytest.approx(at_ceiling)
+
+    # Below the ceiling the surface is untouched: the clamp is a guard on
+    # extrapolation, not a change to the fit.
+    inside = surface.predict(np.array([400.0]), lat, lon)
+    c = surface.coefficients
+    assert inside == pytest.approx(c[0] + c[1] * 400.0 + c[2] * lat + c[3] * lon)
+
+
+def test_predict_holds_elevation_flat_below_the_fitted_range():
+    """The same rule at the other end, where the clamp is a no-op in practice.
+
+    Open-Meteo clamps sea to 0.0 m and the lowest cities sit there, so nothing
+    real falls below the fitted floor. Asserted anyway so the guard is symmetric
+    rather than a special case aimed at mountains.
+    """
+    surface = spatial.fit_surface(
+        [100.0, 200.0, 400.0, 600.0, 800.0, 150.0],
+        [36.0, 38.0, 40.0, 42.0, 43.0, 37.0],
+        [-9.0, -6.0, -3.0, 0.0, 2.0, -8.0],
+        [20.0, 19.0, 18.0, 17.0, 16.0, 19.5],
+    )
+    at_floor = surface.predict(np.array([100.0]), 40.0, -3.0)
+    below = surface.predict(np.array([-50.0]), 40.0, -3.0)
+    assert below == pytest.approx(at_floor)
+
+
+def test_the_july_field_does_not_make_the_mountains_the_hottest_ground():
+    """The regression this guard exists to prevent, on the real city geometry.
+
+    In July these twenty cities show *zero* correlation between elevation and
+    temperature, yet the fitted elevation coefficient is positive, because it
+    picks up continentality once lat and lon take the north-south gradient. Left
+    unclamped and carried to 3,064 m that painted the Sierra Nevada and the
+    Pyrenees hotter than Seville. The values here are a stylised July — cool
+    Atlantic cities at sea level, hot Interior ones on the meseta — so the test
+    reproduces the mechanism rather than depending on a fetched archive.
+    """
+    elevation = np.array([0.0, 0.0, 50.0, 170.0, 600.0, 700.0, 730.0, 776.0])
+    lats = np.array([43.4, 38.7, 41.2, 43.4, 40.4, 41.7, 37.2, 41.0])
+    lons = np.array([-8.4, -9.1, -8.6, -5.9, -3.7, -4.7, -3.6, -5.7])
+    july = np.array([19.1, 21.9, 21.6, 18.5, 26.7, 23.5, 27.9, 23.0])
+
+    surface = spatial.fit_surface(elevation, lats, lons, july)
+    assert surface.lapse_rate_c_per_km > 0, "the confound this test is about"
+
+    # A 3,000 m Pyrenean cell must not come out hotter than the same column at
+    # the fitted ceiling, whatever sign the coefficient happens to take.
+    ceiling = surface.predict(np.array([776.0]), 42.6, 0.5)
+    summit = surface.predict(np.array([3000.0]), 42.6, 0.5)
+    assert summit == pytest.approx(ceiling)
+
+
 def test_fit_surface_ignores_cities_with_a_missing_value():
     surface = spatial.fit_surface(
         [10.0, 200.0, 400.0, 600.0, 820.0, 50.0],
